@@ -2,27 +2,28 @@ import React, { useState, useEffect } from 'react';
 import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import '../../styles/globals.css';
 import '../../styles/pages/role-selector.css';
-import {registerAPI} from "../../services/authService.js";
+import {registerAPI, oauth2RegisterAPI} from "../../services/authService.js";
 
 const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false); // Sửa lại logic redirect một chút bên dưới
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams(); // [3] Khởi tạo
 
   const [isProcessing, setIsProcessing] = useState(false);
-  // Lấy dữ liệu từ trang Login gửi sang
+
+  // Lấy dữ liệu đăng ký thường
   const registerData = location.state?.registerData;
-  // Lấy tempToken từ OAuth2 (nếu có)
+  // [4] Lấy tempToken từ URL
   const tempToken = searchParams.get('tempToken');
 
   useEffect(() => {
-    // === LOGIC QUAN TRỌNG: Nếu có tempToken thì KHÔNG redirect ===
+    // [5] QUAN TRỌNG: Nếu có tempToken (User từ Google) -> Dừng, không redirect về login
     if (tempToken) return;
 
-    // Nếu có registerData (đang đăng ký thường) thì cũng KHÔNG redirect
+    // Nếu có registerData (User đăng ký thường) -> Dừng
     if (registerData) return;
 
     const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
@@ -48,36 +49,39 @@ const RoleSelector = () => {
         }
       }
     }
-  }, [navigate, registerData, tempToken]); // Thêm dependencies
+  }, [navigate, registerData, tempToken]); // Thêm tempToken vào dependency
 
   const handleRoleSelect = async (role) => {
-    // Nếu đây là luồng OAUTH2 (có tempToken)
+    // [6] Xử lý khi chọn role cho user Google
     if (tempToken) {
       setIsProcessing(true);
       try {
-        // [4] Gọi API đăng ký dành cho OAuth2
+        // Gọi API đăng ký OAuth2 (bạn cần thêm hàm này vào authService.js nếu chưa có)
         const response = await oauth2RegisterAPI(tempToken, role);
-        const { token, user } = response.data;
 
-        // Lưu thông tin vào localStorage
+        // Lưu thông tin đăng nhập trả về từ server
+        const { token, user } = response.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('userId', user.id);
-        localStorage.setItem('userRole', role.toUpperCase()); // Lưu role vừa chọn
+        localStorage.setItem('userName', user.username);
+        localStorage.setItem('userRole', role.toUpperCase());
         localStorage.setItem('userLoggedIn', 'true');
 
-        alert('Tạo tài khoản thành công!');
+        alert('Đăng ký thành công!');
         navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
       } catch (error) {
         console.error(error);
-        alert('Lỗi: ' + (error.message || 'Token hết hạn hoặc không hợp lệ'));
+        alert('Lỗi: ' + (error.message || 'Token không hợp lệ hoặc đã hết hạn'));
         navigate('/login');
       } finally {
         setIsProcessing(false);
       }
+      return;
     }
-    // Nếu đây là luồng Đăng Ký Thường
-    else if (registerData) {
+
+    // ... (Giữ nguyên logic cũ cho registerData và user thường) ...
+    if (registerData) {
       setIsProcessing(true);
       try {
         await registerAPI(
@@ -91,12 +95,11 @@ const RoleSelector = () => {
       } catch (error) {
         console.error(error);
         alert('Lỗi đăng ký: ' + (error.message || 'Vui lòng thử lại'));
+        navigate('/login');
       } finally {
         setIsProcessing(false);
       }
-    }
-    // Logic cho User cũ chưa chọn Role
-    else {
+    } else {
       localStorage.setItem('userRole', role);
       navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
     }
@@ -139,21 +142,17 @@ const RoleSelector = () => {
   }
 
   const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
-  // Chỉ return null khi: Chưa login VÀ Không có dữ liệu đăng ký
-  if (!isLoggedIn && !registerData) {
+  const userId = localStorage.getItem('userId');
+  const isAdmin = userId === 'admin@gradingai.com' || userId === 'admin@grading.com';
+
+  // [7] Sửa điều kiện chặn hiển thị: Cho phép hiển thị nếu có tempToken hoặc registerData
+  if (!isLoggedIn && !tempToken && !registerData) {
     return null;
   }
 
-  const isAdmin = localStorage.getItem('userId') === 'admin@gradingai.com';
-  if (isAdmin) return null;
-
-  // Nếu đã login và có role rồi (trừ khi đang đăng ký mới)
-  const savedRole = localStorage.getItem('userRole');
-  if (isLoggedIn && savedRole && savedRole !== 'admin' && !registerData) {
-    return null;
-  }
-
-  const userName = registerData ? registerData.fullName : (localStorage.getItem('userName') || 'bạn');
+  // ... (Phần còn lại giữ nguyên) ...
+  // Lưu ý: Biến userName có thể null khi dùng tempToken, nên fallback:
+  const userName = localStorage.getItem('userName') || (registerData ? registerData.fullName : 'bạn mới');
 
   return (
     <div className="role-selector-container">

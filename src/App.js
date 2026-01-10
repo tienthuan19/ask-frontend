@@ -33,9 +33,12 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/grading" element={<GradingPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/role-selector" element={<RoleSelector />} />
-          {/* [NEW] Route nhận tempToken từ Backend cho user mới */}
+
+          {/* [THÊM DÒNG NÀY] Để khớp với đường dẫn Backend redirect tới */}
           <Route path="/register-role" element={<RoleSelector />} />
+
+          {/* Đường dẫn cũ (giữ lại nếu cần) */}
+          <Route path="/role-selector" element={<RoleSelector />} />
 
           {/* [NEW] Route nhận token đăng nhập thành công */}
           <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
