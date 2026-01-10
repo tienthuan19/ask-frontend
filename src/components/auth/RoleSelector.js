@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import '../../styles/globals.css';
 import '../../styles/pages/role-selector.css';
+import {registerAPI} from "../../services/authService.js";
 
 const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  // Lấy dữ liệu từ trang Login gửi sang
+  const registerData = location.state?.registerData;
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
@@ -39,20 +45,35 @@ const RoleSelector = () => {
     }
   }, [navigate]);
 
-  const handleRoleSelect = (role) => {
-    setSelectedRole(role);
-    setIsSelecting(true);
-    
-    // Lưu vai trò vào localStorage
-    localStorage.setItem('userRole', role);
-    
-    setTimeout(() => {
-      if (role === 'teacher') {
-        navigate('/teacher-dashboard');
-      } else {
-        navigate('/student-dashboard');
+  const handleRoleSelect = async (role) => {
+    // Nếu đây là luồng Đăng Ký Mới (có dữ liệu từ form trước)
+    if (registerData) {
+      setIsProcessing(true);
+      try {
+        // GỌI API ĐĂNG KÝ TẠI ĐÂY (Gửi cả thông tin user + role vừa chọn)
+        await registerAPI(
+            registerData.fullName,
+            registerData.email,
+            registerData.password,
+            role
+        );
+
+        alert('Đăng ký thành công! Vui lòng đăng nhập.');
+        navigate('/login');
+      } catch (error) {
+        console.error(error);
+        alert('Lỗi đăng ký: ' + (error.message || 'Vui lòng thử lại'));
+        // Nếu lỗi, có thể cho quay lại trang điền form
+        navigate('/login');
+      } finally {
+        setIsProcessing(false);
       }
-    }, 1000);
+    } else {
+      // === Logic cũ dành cho User cũ đã đăng nhập nhưng chưa chọn Role ===
+      // ... (giữ nguyên logic localStorage cũ của bạn)
+      localStorage.setItem('userRole', role);
+      navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
+    }
   };
 
   // Hiển thị loading nếu đang redirect

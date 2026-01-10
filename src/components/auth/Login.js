@@ -174,11 +174,15 @@ const Login = () => {
         try {
             // === 1. REGISTER ===
             if (!isLogin) {
-                await registerAPI(formData.fullName, formData.email, formData.password);
-
-                alert('Đăng ký thành công! Vui lòng đăng nhập.');
-                setIsLogin(true);
-                setIsLoading(false);
+                navigate('/role-selector', {
+                    state: {
+                        registerData: {
+                            fullName: formData.fullName,
+                            email: formData.email,
+                            password: formData.password
+                        }
+                    }
+                });
                 return;
             }
 
