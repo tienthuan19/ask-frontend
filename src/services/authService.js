@@ -28,3 +28,16 @@ export const registerAPI = async (fullName, email, password, role) => {
         throw error.response ? error.response.data : { message: 'Network Error' };
     }
 };
+
+// --- THÊM HÀM NÀY ---
+export const oauth2RegisterAPI = async (tempToken, role) => {
+    try {
+        const response = await axios.post(`${API_URL}/oauth2-register`, {
+            tempToken: tempToken,
+            role: role.toUpperCase() // "STUDENT" hoặc "TEACHER"
+        });
+        return response.data;
+    } catch (error) {
+        throw error.response ? error.response.data : { message: 'Network Error' };
+    }
+};

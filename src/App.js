@@ -15,6 +15,7 @@ import RoleSelector from "./components/auth/RoleSelector.js";
 import AssignmentPage from "./components/student/AssignmentPage.js";
 import ProtectedRoute from "./components/auth/ProtectedRoute.js";
 import MultiAccountingDashboard from "./components/admin/MultiAccountingDashboard.js";
+import OAuth2RedirectHandler from "./components/auth/OAuth2RedirectHandler.js";
 
 /**
  * Main App Component
@@ -33,6 +34,11 @@ function App() {
           <Route path="/grading" element={<GradingPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/role-selector" element={<RoleSelector />} />
+          {/* [NEW] Route nhận tempToken từ Backend cho user mới */}
+          <Route path="/register-role" element={<RoleSelector />} />
+
+          {/* [NEW] Route nhận token đăng nhập thành công */}
+          <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
           
           {/* Protected routes - Student */}
           <Route path="/student-dashboard" element={

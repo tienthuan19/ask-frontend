@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {useLocation, useNavigate} from 'react-router-dom';
+import {useLocation, useNavigate, useSearchParams} from 'react-router-dom';
 import '../../styles/globals.css';
 import '../../styles/pages/role-selector.css';
 import {registerAPI} from "../../services/authService.js";
@@ -7,70 +7,96 @@ import {registerAPI} from "../../services/authService.js";
 const RoleSelector = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false); // Sửa lại logic redirect một chút bên dưới
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const [isProcessing, setIsProcessing] = useState(false);
   // Lấy dữ liệu từ trang Login gửi sang
   const registerData = location.state?.registerData;
+  // Lấy tempToken từ OAuth2 (nếu có)
+  const tempToken = searchParams.get('tempToken');
 
   useEffect(() => {
+    // === LOGIC QUAN TRỌNG: Nếu có tempToken thì KHÔNG redirect ===
+    if (tempToken) return;
+
+    // Nếu có registerData (đang đăng ký thường) thì cũng KHÔNG redirect
+    if (registerData) return;
+
     const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
     const userId = localStorage.getItem('userId');
     const isAdmin = userId === 'admin@gradingai.com' || userId === 'admin@grading.com';
-    
+
     if (!isLoggedIn) {
       setIsRedirecting(true);
       navigate('/login');
     } else {
-      // Nếu là admin, redirect ngay
       if (isAdmin) {
         setIsRedirecting(true);
         localStorage.setItem('userRole', 'admin');
         navigate('/multi-accounting-dashboard');
       } else {
-        // User thường - kiểm tra xem đã chọn role chưa
         const savedRole = localStorage.getItem('userRole');
-        // Chỉ redirect nếu có role và không phải admin
         if (savedRole && savedRole !== 'admin') {
           setIsRedirecting(true);
           navigate(savedRole === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
         }
-        // Nếu không có role hoặc role là admin (nhưng user không phải admin), xóa role cũ
         if (savedRole === 'admin') {
           localStorage.removeItem('userRole');
         }
       }
     }
-  }, [navigate]);
+  }, [navigate, registerData, tempToken]); // Thêm dependencies
 
   const handleRoleSelect = async (role) => {
-    // Nếu đây là luồng Đăng Ký Mới (có dữ liệu từ form trước)
-    if (registerData) {
+    // Nếu đây là luồng OAUTH2 (có tempToken)
+    if (tempToken) {
       setIsProcessing(true);
       try {
-        // GỌI API ĐĂNG KÝ TẠI ĐÂY (Gửi cả thông tin user + role vừa chọn)
+        // [4] Gọi API đăng ký dành cho OAuth2
+        const response = await oauth2RegisterAPI(tempToken, role);
+        const { token, user } = response.data;
+
+        // Lưu thông tin vào localStorage
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('userId', user.id);
+        localStorage.setItem('userRole', role.toUpperCase()); // Lưu role vừa chọn
+        localStorage.setItem('userLoggedIn', 'true');
+
+        alert('Tạo tài khoản thành công!');
+        navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
+      } catch (error) {
+        console.error(error);
+        alert('Lỗi: ' + (error.message || 'Token hết hạn hoặc không hợp lệ'));
+        navigate('/login');
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+    // Nếu đây là luồng Đăng Ký Thường
+    else if (registerData) {
+      setIsProcessing(true);
+      try {
         await registerAPI(
             registerData.fullName,
             registerData.email,
             registerData.password,
             role
         );
-
         alert('Đăng ký thành công! Vui lòng đăng nhập.');
         navigate('/login');
       } catch (error) {
         console.error(error);
         alert('Lỗi đăng ký: ' + (error.message || 'Vui lòng thử lại'));
-        // Nếu lỗi, có thể cho quay lại trang điền form
-        navigate('/login');
       } finally {
         setIsProcessing(false);
       }
-    } else {
-      // === Logic cũ dành cho User cũ đã đăng nhập nhưng chưa chọn Role ===
-      // ... (giữ nguyên logic localStorage cũ của bạn)
+    }
+    // Logic cho User cũ chưa chọn Role
+    else {
       localStorage.setItem('userRole', role);
       navigate(role === 'teacher' ? '/teacher-dashboard' : '/student-dashboard');
     }
@@ -112,27 +138,22 @@ const RoleSelector = () => {
     );
   }
 
-  // Nếu chưa đăng nhập, không hiển thị gì (sẽ redirect)
   const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
-  const userId = localStorage.getItem('userId');
-  const isAdmin = userId === 'admin@gradingai.com' || userId === 'admin@grading.com';
-  
-  if (!isLoggedIn) {
+  // Chỉ return null khi: Chưa login VÀ Không có dữ liệu đăng ký
+  if (!isLoggedIn && !registerData) {
     return null;
   }
 
-  // Admin không cần chọn role
-  if (isAdmin) {
-    return null;
-  }
+  const isAdmin = localStorage.getItem('userId') === 'admin@gradingai.com';
+  if (isAdmin) return null;
 
-  // User thường - nếu đã có role (và không phải admin), không hiển thị UI chọn role nữa
+  // Nếu đã login và có role rồi (trừ khi đang đăng ký mới)
   const savedRole = localStorage.getItem('userRole');
-  if (savedRole && savedRole !== 'admin') {
-    return null; // Hoặc hiển thị loading trong khi redirect
+  if (isLoggedIn && savedRole && savedRole !== 'admin' && !registerData) {
+    return null;
   }
 
-  const userName = localStorage.getItem('userName') || 'bạn';
+  const userName = registerData ? registerData.fullName : (localStorage.getItem('userName') || 'bạn');
 
   return (
     <div className="role-selector-container">
