@@ -2,7 +2,11 @@ import React, {useState, useEffect, useCallback} from 'react';
 import ClassStructure from './ClassStructure/index.js';
 import '../../styles/globals.css';
 import '../../styles/components/class-manager.css';
-import {createClassAPI, getDashboardStatsAPI, getTeacherClassesAPI} from "../../services/classService.js";
+import {
+  createClassAPI,
+  getDashboardStatsAPI,
+  getTeacherClassesAPI
+} from "../../services/classManagerService.js";
 import * as ClassService from "../../services/classManagerService.js";
 
 function ClassManager() {
@@ -42,10 +46,11 @@ function ClassManager() {
         // Backend trả về: numberOfStudents, numberOfAssignments
         const mappedClasses = classesResponse.data.map(cls => ({
           ...cls,
-          code: cls.classCode || cls.code, // Đảm bảo trường 'code' tồn tại cho UI
-          // Tạo mảng giả nếu component con (ClassStructure) cần check length,
-          // nhưng ưu tiên dùng numberOfStudents để hiển thị
+          code: cls.classCode || cls.code,
+          // FIX: Tạo mảng giả cho cả students và assignments để tránh lỗi undefined length
           students: new Array(cls.numberOfStudents || 0).fill(null),
+          assignments: new Array(cls.numberOfAssignments || 0).fill(null), // <-- THÊM DÒNG NÀY
+
           numberOfStudents: cls.numberOfStudents || 0,
           numberOfAssignments: cls.numberOfAssignments || 0,
           createdAt: cls.createdAt || new Date().toISOString()

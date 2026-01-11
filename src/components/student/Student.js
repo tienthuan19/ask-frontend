@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect, useCallback} from "react";
 import { useNavigate } from "react-router-dom";
 import StudentTest from "./StudentTest.js";
 import StudentCalendar from "./StudentCalendar.js";
 import NotificationSystem from "../shared/NotificationSystem.js";
 import ProfileComponent from "../shared/ProfileComponent.js";
-import ClassDataManager from "../../services/classManagerService.js";
 import "../../styles/globals.css";
 import "../../styles/pages/student.css";
+import {getClassAssignmentsAPI, getStudentClassesAPI, joinClassAPI} from "../../services/classManagerService.js";
 
 const Student = () => {
   const navigate = useNavigate();
-  
+
+  // --- State Management ---
   const [activeTab, setActiveTab] = useState("classes");
   const [activeClassTab, setActiveClassTab] = useState("assignments");
   const [selectedClassId, setSelectedClassId] = useState(null);
@@ -19,6 +20,7 @@ const Student = () => {
   const [isJoining, setIsJoining] = useState(false);
   const [searchResult, setSearchResult] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [studentInfo, setStudentInfo] = useState({
     id: localStorage.getItem('studentId') || 'student_' + Date.now(),
@@ -30,29 +32,60 @@ const Student = () => {
     avatar: "https://via.placeholder.com/100"
   });
 
+  // --- Data Loading Logic ---
+  const loadStudentClasses = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await getStudentClassesAPI();
+
+      if (response && response.data) {
+        // Map dữ liệu từ Backend sang format của UI
+        const mappedClasses = response.data.map(cls => ({
+          ...cls,
+          code: cls.classCode || cls.code,
+          // Backend chưa trả về teacherName trong CardResponse, tạm thời để placeholder hoặc map nếu có
+          teacherName: cls.teacherName || "Giáo viên",
+          // Tạo mảng giả để UI không bị lỗi khi check .length
+          students: new Array(cls.numberOfStudents || 0).fill(null),
+          assignments: new Array(cls.numberOfAssignments || 0).fill(null),
+          // Giữ lại số liệu gốc
+          numberOfStudents: cls.numberOfStudents || 0,
+          numberOfAssignments: cls.numberOfAssignments || 0
+        }));
+        setJoinedClasses(mappedClasses);
+      }
+    } catch (error) {
+      console.error("Failed to load student classes:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadStudentClasses();
     if (!localStorage.getItem('studentId')) {
       localStorage.setItem('studentId', studentInfo.id);
     }
-  }, []);
+  }, [loadStudentClasses, studentInfo.id]);
 
-  const loadStudentClasses = () => {
-    const studentId = localStorage.getItem('studentId') || studentInfo.id;
-    const classes = ClassDataManager.getStudentClasses(studentId);
-    setJoinedClasses(classes);
-  };
+  // --- Handlers ---
 
-  const handleViewClass = (classId) => {
+  const handleViewClass = async (classId) => {
     setSelectedClassId(classId);
     setActiveTab("classDetails");
-    loadClassAssignments(classId);
+    // Reset assignments khi chuyển lớp
+    setAssignments([]);
+    await loadClassAssignments(classId);
   };
 
-  const loadClassAssignments = (classId) => {
-    const selectedClass = joinedClasses.find(c => c.id === classId);
-    if (selectedClass && selectedClass.assignments) {
-      setAssignments(selectedClass.assignments);
+  const loadClassAssignments = async (classId) => {
+    try {
+      const response = await getClassAssignmentsAPI(classId);
+      if (response && response.data) {
+        setAssignments(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load assignments:", error);
     }
   };
 
@@ -61,50 +94,44 @@ const Student = () => {
       alert('Vui lòng nhập mã lớp học!');
       return;
     }
-    const foundClass = ClassDataManager.findClassByCode(classCode.trim());
-    if (foundClass) {
-      setSearchResult(foundClass);
-    } else {
-      alert('Không tìm thấy lớp học với mã này!');
-      setSearchResult(null);
-    }
+
+    // Lưu ý: Backend hiện tại chưa có API "Preview" lớp học bằng code (Public Search).
+    // Ta sẽ giả lập bước này để hiển thị UI xác nhận trước khi gọi API Join thực sự.
+    setSearchResult({
+      id: "preview_mode",
+      name: `Lớp có mã: ${classCode}`,
+      teacherName: "---", // Không lấy được info nếu chưa join
+      subject: "Nhấn tham gia để xem chi tiết",
+      students: [],
+      code: classCode
+    });
   };
 
   const handleJoinClass = async () => {
-    if (!searchResult) return;
+    if (!classCode) return;
     setIsJoining(true);
     try {
-      const studentId = localStorage.getItem('studentId') || studentInfo.id;
-      const studentData = {
-        id: studentId,
-        name: studentInfo.name,
-        email: studentInfo.email,
-      };
-      const result = ClassDataManager.joinClass(classCode.trim(), studentData);
-      if (result.success) {
-        loadStudentClasses();
+      // Gọi API join
+      const response = await joinClassAPI(classCode.trim());
+
+      if (response && response.status === 200) {
+        alert(`Tham gia lớp học thành công!`);
+        await loadStudentClasses(); // Reload danh sách
         setClassCode('');
         setSearchResult(null);
-        alert(`Tham gia lớp học "${result.class.name}" thành công!`);
-      } else {
-        alert(result.message);
       }
     } catch (error) {
       console.error('Error joining class:', error);
-      alert('Có lỗi xảy ra khi tham gia lớp học!');
+      const msg = error.response?.data?.message || 'Mã lớp không hợp lệ hoặc bạn đã tham gia lớp này!';
+      alert(msg);
     } finally {
       setIsJoining(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('userLoggedIn');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('studentId');
+    localStorage.clear();
     navigate("/", { replace: true });
-    setTimeout(() => window.location.reload(), 100);
   };
 
   const selectedClass = joinedClasses.find(c => c.id === selectedClassId);

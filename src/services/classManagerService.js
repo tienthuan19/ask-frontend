@@ -65,7 +65,7 @@ export const joinClassAPI = async (classCode) => {
   try {
     const response = await axios.post(
         `${API_BASE_URL}/classrooms/join`,
-        { code: classCode },
+        { classCode: classCode },
         getAuthHeaders()
     );
     return response.data;
