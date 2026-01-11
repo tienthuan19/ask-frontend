@@ -1,34 +1,79 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import ClassStructure from './ClassStructure/index.js';
-import ClassDataManager from '../../services/classDataManager.js';
 import '../../styles/globals.css';
 import '../../styles/components/class-manager.css';
+import {createClassAPI, getDashboardStatsAPI, getTeacherClassesAPI} from "../../services/classService.js";
+import * as ClassService from "../../services/classManagerService.js";
 
 function ClassManager() {
+  // --- State Management ---
   const [classes, setClasses] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    totalClassrooms: 0,
+    totalStudents: 0
+  });
+
+  // Form State
   const [className, setClassName] = useState('');
   const [classSubject, setClassSubject] = useState('');
   const [classDescription, setClassDescription] = useState('');
-  const [selectedClassIdx, setSelectedClassIdx] = useState(null);
-  const [studentName, setStudentName] = useState('');
-  const [showClassStructure, setShowClassStructure] = useState(false);
-  const [selectedClass, setSelectedClass] = useState(null);
-  const [isCreating, setIsCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  // Load classes từ storage khi component mount
-  useEffect(() => {
-    loadTeacherClasses();
+  // Loading & UI State
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Selection State
+  const [showClassStructure, setShowClassStructure] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+
+  // --- Data Loading Logic ---
+  const loadDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Gọi song song 2 API
+      const [classesResponse, statsResponse] = await Promise.all([
+        getTeacherClassesAPI(),
+        getDashboardStatsAPI()
+      ]);
+
+      if (classesResponse && classesResponse.data) {
+        // Map dữ liệu từ backend sang format UI
+        // Backend trả về: numberOfStudents, numberOfAssignments
+        const mappedClasses = classesResponse.data.map(cls => ({
+          ...cls,
+          code: cls.classCode || cls.code, // Đảm bảo trường 'code' tồn tại cho UI
+          // Tạo mảng giả nếu component con (ClassStructure) cần check length,
+          // nhưng ưu tiên dùng numberOfStudents để hiển thị
+          students: new Array(cls.numberOfStudents || 0).fill(null),
+          numberOfStudents: cls.numberOfStudents || 0,
+          numberOfAssignments: cls.numberOfAssignments || 0,
+          createdAt: cls.createdAt || new Date().toISOString()
+        }));
+        setClasses(mappedClasses);
+      }
+
+      if (statsResponse && statsResponse.data) {
+        setDashboardStats(statsResponse.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const loadTeacherClasses = () => {
-    // Lấy teacher ID từ localStorage hoặc tạm thời dùng fixed ID
-    const teacherId = localStorage.getItem('teacherId') || 'teacher_001';
-    const teacherClasses = ClassDataManager.getTeacherClasses(teacherId);
-    setClasses(teacherClasses);
+  // --- Effects ---
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Helper sinh mã lớp ngẫu nhiên
+  const generateClassCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  // Tạo lớp học mới
+  // --- Handlers ---
   const handleAddClass = async () => {
     if (className.trim() === '' || classSubject.trim() === '') {
       alert('Vui lòng nhập đầy đủ tên lớp và môn học!');
@@ -38,111 +83,68 @@ function ClassManager() {
     setIsCreating(true);
 
     try {
-      const teacherId = localStorage.getItem('teacherId') || 'teacher_001';
-      const teacherName = localStorage.getItem('userName') || 'Giáo viên';
-      
-      const classData = {
+      const newClassCode = generateClassCode();
+      const payload = {
+        code: newClassCode,
         name: className.trim(),
         subject: classSubject.trim(),
-        description: classDescription.trim(),
-        teacherName: teacherName
+        description: classDescription.trim()
       };
 
-      const newClass = ClassDataManager.createClass(classData, teacherId);
-      
-      if (newClass) {
-        // Cập nhật danh sách lớp
-        loadTeacherClasses();
-        
+      const response = await createClassAPI(payload);
+
+      if (response && response.status === 200) {
+        alert(`Tạo lớp học thành công!\nMã lớp: ${newClassCode}`);
+
         // Reset form
         setClassName('');
         setClassSubject('');
         setClassDescription('');
         setShowCreateForm(false);
-        
-        alert(`Tạo lớp học thành công!\nMã lớp: ${newClass.code}\nHãy chia sẻ mã này với học sinh để họ tham gia lớp.`);
-      } else {
-        alert('Lỗi khi tạo lớp học. Vui lòng thử lại!');
+
+        // Reload data
+        await loadDashboardData();
       }
     } catch (error) {
-      console.error('Error creating class:', error);
-      alert('Có lỗi xảy ra khi tạo lớp học!');
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi tạo lớp học!';
+      alert(msg);
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Chọn lớp để quản lý
-  const handleSelectClass = (idx) => {
-    setSelectedClassIdx(idx);
-  };
-
-  // Mở cấu trúc lớp học chi tiết
   const handleOpenClassStructure = (cls) => {
     setSelectedClass(cls);
     setShowClassStructure(true);
   };
 
-  // Quay lại danh sách lớp
   const handleBackToClassList = () => {
     setShowClassStructure(false);
     setSelectedClass(null);
-    loadTeacherClasses(); // Reload để cập nhật dữ liệu mới nhất
+    loadDashboardData(); // Refresh dữ liệu khi quay lại
   };
 
-  // Thêm học sinh vào lớp được chọn (thực tế học sinh sẽ tự tham gia bằng mã lớp)
-  const handleAddStudent = () => {
-    if (studentName.trim() !== '' && selectedClassIdx !== null) {
-      const studentData = {
-        id: 'student_' + Date.now(),
-        name: studentName.trim(),
-        email: '',
-      };
-
-      const classId = classes[selectedClassIdx].id;
-      const result = ClassDataManager.joinClass(classes[selectedClassIdx].code, studentData);
-      
-      if (result.success) {
-        loadTeacherClasses(); // Reload classes
-        setStudentName('');
-        alert('Thêm học sinh thành công!');
-      } else {
-        alert(result.message);
-      }
-    }
-  };
-
-  // Xóa lớp học
   const handleDeleteClass = (classId, className) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa lớp "${className}"?`)) {
-      const teacherId = localStorage.getItem('teacherId') || 'teacher_001';
-      const success = ClassDataManager.deleteClass(classId, teacherId);
-      
-      if (success) {
-        loadTeacherClasses();
-        alert('Xóa lớp học thành công!');
-      } else {
-        alert('Lỗi khi xóa lớp học!');
-      }
+    // Placeholder cho chức năng xóa
+    if (window.confirm(`Bạn có chắc chắn muốn xóa lớp "${className}"? (Chức năng này chưa có API)`)) {
+      console.log("Delete requested for ID:", classId);
+      alert("Chức năng xóa đang được phát triển.");
     }
   };
 
-  // Cập nhật thông tin lớp học
   const handleUpdateClass = (updatedClass) => {
-    const teacherId = localStorage.getItem('teacherId') || 'teacher_001';
-    ClassDataManager.updateClass(updatedClass.id, updatedClass, teacherId);
-    setSelectedClass(updatedClass);
-    loadTeacherClasses(); // Reload để đồng bộ dữ liệu
+    // Update local state tạm thời
+    setClasses(prev => prev.map(c => c.id === updatedClass.id ? updatedClass : c));
   };
 
   // Hiển thị ClassStructure nếu được chọn
   if (showClassStructure && selectedClass) {
     return (
-      <ClassStructure 
-        selectedClass={selectedClass} 
-        onBack={handleBackToClassList}
-        onUpdateClass={handleUpdateClass}
-      />
+        <ClassStructure
+            selectedClass={selectedClass}
+            onBack={handleBackToClassList}
+            onUpdateClass={handleUpdateClass}
+        />
     );
   }
 

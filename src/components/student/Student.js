@@ -4,7 +4,7 @@ import StudentTest from "./StudentTest.js";
 import StudentCalendar from "./StudentCalendar.js";
 import NotificationSystem from "../shared/NotificationSystem.js";
 import ProfileComponent from "../shared/ProfileComponent.js";
-import ClassDataManager from "../../services/classDataManager.js";
+import ClassDataManager from "../../services/classManagerService.js";
 import "../../styles/globals.css";
 import "../../styles/pages/student.css";
 
