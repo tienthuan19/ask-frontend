@@ -6,7 +6,7 @@ import NotificationSystem from "../shared/NotificationSystem.js";
 import ProfileComponent from "../shared/ProfileComponent.js";
 import "../../styles/globals.css";
 import "../../styles/pages/student.css";
-import {getClassAssignmentsAPI, getStudentClassesAPI, joinClassAPI} from "../../services/classManagerService.js";
+import {getClassAssignmentsAPI, getStudentClassesAPI, joinClassAPI, getStudentPendingAssignmentsAPI} from "../../services/classManagerService.js";
 
 const Student = () => {
   const navigate = useNavigate();
@@ -47,10 +47,9 @@ const Student = () => {
           teacherName: cls.teacherName || "Giáo viên",
           // Tạo mảng giả để UI không bị lỗi khi check .length
           students: new Array(cls.numberOfStudents || 0).fill(null),
-          assignments: new Array(cls.numberOfAssignments || 0).fill(null),
+          numberOfPendingAssignments: new Array(cls.numberOfPendingAssignments || 0).fill(null),
           // Giữ lại số liệu gốc
           numberOfStudents: cls.numberOfStudents || 0,
-          numberOfAssignments: cls.numberOfAssignments || 0
         }));
         setJoinedClasses(mappedClasses);
       }
@@ -80,12 +79,11 @@ const Student = () => {
 
   const loadClassAssignments = async (classId) => {
     try {
-      // Service trả về: [ {id: 1...}, {id: 2...} ]
-      const data = await getClassAssignmentsAPI(classId);
+      setIsLoading(true); // Nên thêm loading state
 
-      // Kiểm tra nếu là mảng thì set luôn
+      const data = await getStudentPendingAssignmentsAPI(classId);
+
       if (Array.isArray(data)) {
-        // Lọc bỏ phần tử null để tránh lỗi render
         const validAssignments = data.filter(item => item !== null);
         setAssignments(validAssignments);
       } else {
@@ -94,6 +92,8 @@ const Student = () => {
     } catch (error) {
       console.error("Failed to load assignments:", error);
       setAssignments([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -265,7 +265,7 @@ const Student = () => {
                   <div className="class-card-body">
                     <p>👨‍🏫 {classItem.teacherName}</p>
                     <p>📖 {classItem.subject}</p>
-                    <p>📝 {classItem.assignments?.length || 0} bài tập</p>
+                    <p>📝 {classItem.numberOfPendingAssignments?.length || 0} bài tập</p>
                   </div>
                   <div className="class-card-footer">
                     <button 
@@ -385,7 +385,7 @@ const Student = () => {
                 </div>
                 <div className="info-item">
                   <span className="info-label">Số bài tập</span>
-                  <span className="info-value">{selectedClass?.assignments?.length || 0}</span>
+                  <span className="info-value">{selectedClass?.numberOfPendingAssignments?.length || 0}</span>
                 </div>
               </div>
               {selectedClass?.description && (

@@ -144,6 +144,18 @@ export const getClassAssignmentsAPI = async (classroomId) => {
   }
 };
 
+export const getStudentPendingAssignmentsAPI = async (classroomId) => {
+  try {
+    const token = localStorage.getItem('token');
+    // Gọi vào endpoint /pending mới tạo
+    const response = await axios.get(
+        `${API_BASE_URL}/classrooms/${classroomId}/assignments/pending`, getAuthHeaders());
+    return response.data.data || response.data.result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 /**
  * Tạo bài tập mới
  * POST /api/lms-backend/v1/classrooms/{classroomId}/assignments
