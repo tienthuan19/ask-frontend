@@ -98,7 +98,7 @@ export const getClassAnnouncementsAPI = async (classroomId) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}/announcements`, getAuthHeaders());
     // Lưu ý: Kiểm tra xem backend trả về mảng trực tiếp hay bọc trong object (ví dụ: response.data.result)
-    return response.data.result || response.data;
+    return response.data.data || [];
   } catch (error) {
     throw error;
   }

@@ -11,6 +11,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false); // <--- MỚI
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -58,18 +59,32 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validate()) {
-      // Không tự tạo ID và createdAt giả nữa
-      // Chỉ gửi dữ liệu người dùng nhập
+      setIsSubmitting(true); // <--- MỚI
+      // Chuẩn bị dữ liệu gửi đi
       const announcementData = {
         title: formData.title,
         content: formData.content,
         priority: formData.priority,
+        sendEmail: formData.sendEmail,
+        // --------------------
         attachments: formData.attachments
       };
 
-      onSave && onSave(announcementData);
+      try {
+        // Chờ hàm onSave (gọi API bên index.js) chạy xong
+        if (onSave) {
+          await onSave(announcementData); // <--- THÊM AWAIT
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        // Dù thành công hay thất bại (nếu component chưa unmount) thì mở khóa nút
+        // Lưu ý: Nếu thành công, component này thường sẽ bị đóng lại bởi parent,
+        // nên dòng này chủ yếu phục vụ trường hợp API lỗi để user ấn lại.
+        setIsSubmitting(false); // <--- MỚI
+      }
     }
   };
 
@@ -135,7 +150,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
                     type="radio"
                     name="priority"
                     value="medium"
-                    checked={formData.priority === 'medium'}
+                    checked={formData.priority === 'LOW'}
                     onChange={(e) => handleChange('priority', e.target.value)}
                   />
                   <span className="priority-dot medium"></span>

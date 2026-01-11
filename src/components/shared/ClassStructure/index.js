@@ -191,7 +191,8 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
       const payload = {
         title: announcement.title,
         content: announcement.content,
-        priority: announcement.priority
+        priority: announcement.priority,
+        sendEmail: announcement.sendEmail // Mặc định là false nếu không có
       };
 
       // Gọi API tạo mới
