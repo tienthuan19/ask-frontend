@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import useClassNavigation from '../../../hooks/useClassNavigation.js';
 import useAssignmentForm from '../../../hooks/useAssignmentForm.js';
+import { getClassAnnouncementsAPI, createClassAnnouncementAPI } from '../../../services/classManagerService.js';
 import { ClassHeader, ClassSidebar, ClassContent } from './layout/index.js';
 import '../../../styles/components/class-structure.css';
 
@@ -12,7 +13,20 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
   const [activeContent, setActiveContent] = useState('welcome');
   const [announcements, setAnnouncements] = useState([]);
   const [materials, setMaterials] = useState([]);
-  
+
+  const fetchAnnouncements = useCallback(async () => {
+    if (selectedClass && selectedClass.id) {
+      try {
+        const data = await getClassAnnouncementsAPI(selectedClass.id);
+        setAnnouncements(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to fetch announcements:", error);
+      }
+    }
+  }, [selectedClass]);
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
   // Assignment form state
   const [assignmentFormData, setAssignmentFormData] = useState({
     title: '',
@@ -171,22 +185,29 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
   }, [selectedClass, onUpdateClass]);
 
   // Announcement handlers
-  const handleSaveAnnouncement = useCallback((announcement) => {
-    setAnnouncements(prev => {
-      const existingIndex = prev.findIndex(a => a.id === announcement.id);
-      if (existingIndex >= 0) {
-        // Update existing
-        const updated = [...prev];
-        updated[existingIndex] = announcement;
-        return updated;
-      }
-      // Add new
-      return [announcement, ...prev];
-    });
-    setShowCreateAnnouncement(false);
-    setActiveContent('announcement-list');
-    alert('Đăng thông báo thành công!');
-  }, []);
+  const handleSaveAnnouncement = useCallback(async (announcement) => {
+    try {
+      // Chuẩn bị dữ liệu gửi lên server
+      const payload = {
+        title: announcement.title,
+        content: announcement.content,
+        priority: announcement.priority
+      };
+
+      // Gọi API tạo mới
+      await createClassAnnouncementAPI(selectedClass.id, payload);
+
+      // Load lại danh sách sau khi tạo thành công
+      await fetchAnnouncements();
+
+      setShowCreateAnnouncement(false);
+      setActiveContent('announcement-list');
+      alert('Đăng thông báo thành công!');
+    } catch (error) {
+      console.error("Error creating announcement:", error);
+      alert('Lỗi khi đăng thông báo: ' + (error.response?.data?.message || error.message));
+    }
+  }, [selectedClass, fetchAnnouncements]);
 
   const handleDeleteAnnouncement = useCallback((announcementId) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa thông báo này?')) {

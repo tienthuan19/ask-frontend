@@ -5,7 +5,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
   const [formData, setFormData] = useState({
     title: editData?.title || '',
     content: editData?.content || '',
-    priority: editData?.priority || 'normal',
+    priority: editData?.priority || 'NORMAL',
     sendEmail: editData?.sendEmail || false,
     attachments: editData?.attachments || []
   });
@@ -60,13 +60,16 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
 
   const handleSubmit = () => {
     if (validate()) {
-      const announcement = {
-        ...formData,
-        id: editData?.id || Date.now(),
-        createdAt: editData?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+      // Không tự tạo ID và createdAt giả nữa
+      // Chỉ gửi dữ liệu người dùng nhập
+      const announcementData = {
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        attachments: formData.attachments
       };
-      onSave && onSave(announcement);
+
+      onSave && onSave(announcementData);
     }
   };
 
@@ -116,7 +119,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
             <div className="form-group">
               <label>Mức độ ưu tiên</label>
               <div className="priority-options">
-                <label className={`priority-option ${formData.priority === 'normal' ? 'active' : ''}`}>
+                <label className={`priority-option ${formData.priority === 'NORMAL' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="priority"
@@ -127,7 +130,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
                   <span className="priority-dot normal"></span>
                   Bình thường
                 </label>
-                <label className={`priority-option ${formData.priority === 'medium' ? 'active' : ''}`}>
+                <label className={`priority-option ${formData.priority === 'LOW' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="priority"
@@ -138,7 +141,7 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
                   <span className="priority-dot medium"></span>
                   Trung bình
                 </label>
-                <label className={`priority-option ${formData.priority === 'high' ? 'active' : ''}`}>
+                <label className={`priority-option ${formData.priority === 'URGENT' ? 'active' : ''}`}>
                   <input
                     type="radio"
                     name="priority"

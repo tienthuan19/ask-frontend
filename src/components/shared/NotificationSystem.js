@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import NotificationBadge from './NotificationSystem/NotificationBadge.js';
 import NotificationList from './NotificationSystem/NotificationList.js';
+import { getMyNotificationsAPI } from '../../services/classManagerService.js';
 import {
   checkDeadlines,
   createNewAssignmentNotification,
@@ -57,6 +58,48 @@ const NotificationSystem = ({ userRole, classes, currentUser }) => {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
+  // --- LOGIC GỌI API ---
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const data = await getMyNotificationsAPI();
+
+        if (data && Array.isArray(data)) {
+          // Map dữ liệu từ API (nếu cần thiết) để khớp với UI
+          const apiNotifications = data.map(n => ({
+            id: n.id,
+            title: n.title,
+            message: n.content || n.message, // Backend có thể trả về 'content' hoặc 'message'
+            timestamp: n.createdAt || new Date().toISOString(),
+            read: n.read || false,
+            type: n.type || 'system',
+            priority: 'normal'
+          }));
+
+          // Cập nhật state
+          setNotifications(prev => {
+            // Có thể kết hợp với thông báo Local (deadline) nếu muốn
+            // Ở đây ta ưu tiên hiển thị thông báo từ Server
+            return apiNotifications;
+          });
+
+          // Đếm số lượng chưa đọc
+          const count = apiNotifications.filter(n => !n.read).length;
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        console.error("Không thể tải thông báo:", error);
+      }
+    };
+
+    // Gọi lần đầu khi component mount
+    fetchNotifications();
+
+    // Thiết lập polling: Gọi lại mỗi 30 giây để check thông báo mới
+    const intervalId = setInterval(fetchNotifications, 30000);
+
+    return () => clearInterval(intervalId);
+  }, []); // Dependency array rỗng để chạy 1 lần khi mount
 
   // Kiểm tra deadline định kỳ
   useEffect(() => {

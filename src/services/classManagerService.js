@@ -86,3 +86,53 @@ export const getClassAssignmentsAPI = async (classroomId) => {
     throw error;
   }
 };
+
+// --- CÁC HÀM MỚI ĐƯỢC THÊM VÀO ---
+
+/**
+ * Lấy danh sách thông báo của lớp học
+ * GET /classrooms/{classroomId}/announcements
+ * Dùng cho cả Giáo viên và Học sinh
+ */
+export const getClassAnnouncementsAPI = async (classroomId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}/announcements`, getAuthHeaders());
+    // Lưu ý: Kiểm tra xem backend trả về mảng trực tiếp hay bọc trong object (ví dụ: response.data.result)
+    return response.data.result || response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Tạo thông báo mới cho lớp học
+ * POST /classrooms/{classroomId}/announcements
+ * Chỉ dùng cho Giáo viên
+ */
+export const createClassAnnouncementAPI = async (classroomId, announcementData) => {
+  // announcementData: { title, content, priority }
+  try {
+    const response = await axios.post(
+        `${API_BASE_URL}/classrooms/${classroomId}/announcements`,
+        announcementData,
+        getAuthHeaders()
+    );
+    return response.data.result || response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Lấy danh sách thông báo của người dùng (Notification System)
+ * GET /notifications
+ * Dùng cho Học sinh (và Giáo viên nếu hệ thống hỗ trợ)
+ */
+export const getMyNotificationsAPI = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/notifications`, getAuthHeaders());
+    return response.data.result || response.data;
+  } catch (error) {
+    throw error;
+  }
+};

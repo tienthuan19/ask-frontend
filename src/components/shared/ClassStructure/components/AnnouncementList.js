@@ -4,21 +4,29 @@ import { Button } from '../../../ui/index.js';
 const AnnouncementList = ({ announcements = [], onDelete, onEdit }) => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      const date = new Date(dateString);
+      // Kiểm tra xem date có hợp lệ không
+      if (isNaN(date.getTime())) return dateString;
+
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return '';
+    }
   };
 
   const getPriorityStyle = (priority) => {
-    switch (priority) {
-      case 'high':
+    const p = priority ? priority.toLowerCase() : 'NORMAL';
+    switch (p) {
+      case 'URGENT':
         return { bg: '#fee2e2', color: '#dc2626', label: '🔴 Quan trọng' };
-      case 'medium':
+      case 'LOW':
         return { bg: '#fef3c7', color: '#d97706', label: '🟡 Trung bình' };
       default:
         return { bg: '#dcfce7', color: '#16a34a', label: '🟢 Bình thường' };
