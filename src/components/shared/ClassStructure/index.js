@@ -1,7 +1,11 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import useClassNavigation from '../../../hooks/useClassNavigation.js';
 import useAssignmentForm from '../../../hooks/useAssignmentForm.js';
-import { getClassAnnouncementsAPI, createClassAnnouncementAPI } from '../../../services/classManagerService.js';
+import { getClassAnnouncementsAPI,
+  createClassAnnouncementAPI,
+  getClassAssignmentsAPI,
+  createClassAssignmentAPI
+} from '../../../services/classManagerService.js';
 import { ClassHeader, ClassSidebar, ClassContent } from './layout/index.js';
 import '../../../styles/components/class-structure.css';
 
@@ -13,6 +17,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
   const [activeContent, setActiveContent] = useState('welcome');
   const [announcements, setAnnouncements] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [assignments, setAssignments] = useState([]);
 
   const fetchAnnouncements = useCallback(async () => {
     if (selectedClass && selectedClass.id) {
@@ -28,10 +33,27 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
   // Assignment form state
+  const fetchAssignments = useCallback(async () => {
+    if (selectedClass && selectedClass.id) {
+      try {
+        const data = await getClassAssignmentsAPI(selectedClass.id);
+        setAssignments(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to fetch assignments:", error);
+      }
+    }
+  }, [selectedClass]);
+
+  // Gọi fetch khi component mount (kết hợp với fetchAnnouncements cũ)
+  useEffect(() => {
+    fetchAnnouncements();
+    fetchAssignments(); // <--- Gọi thêm hàm này
+  }, [fetchAnnouncements, fetchAssignments]);
+
   const [assignmentFormData, setAssignmentFormData] = useState({
     title: '',
     description: '',
-    deadline: '',
+    dueDate: '',
     timeLimit: '',
     maxScore: 100,
     questions: []
@@ -125,24 +147,49 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
   }, []);
 
   // Assignment handlers
-  const handleCreateAssignment = useCallback((newAssignment) => {
-    const assignment = {
-      ...newAssignment,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    };
+  const handleCreateAssignment = useCallback(async (formData) => {
+    try {
+      // MAPPING DỮ LIỆU: Frontend Form -> Backend Request DTO
+      // Backend Request: title, description, dueDate, duration, maxScore, questions
 
-    const updatedClass = {
-      ...selectedClass,
-      assignments: [...(selectedClass.assignments || []), assignment]
-    };
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        // Backend cần LocalDateTime (ISO format). Frontend datetime-local trả về 'YYYY-MM-DDTHH:mm'
+        // Ta cần đảm bảo nó đúng chuẩn ISO 8601
+        dueDate: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        duration: parseInt(formData.timeLimit), // Backend: Integer duration
+        maxScore: parseInt(formData.maxScore),  // Backend: Integer maxScore
 
-    onUpdateClass(updatedClass);
-    setShowCreateAssignment(false);
-    resetAssignmentForm();
-    setActiveContent('assignment-list');
-    alert('Tạo bài tập thành công!');
-  }, [selectedClass, onUpdateClass]);
+        // Map danh sách câu hỏi
+        questions: formData.questions.map(q => ({
+          content: q.question,      // Frontend: question -> Backend: content
+          modelAnswer: q.sampleAnswer, // Frontend: sampleAnswer -> Backend: modelAnswer
+          score: parseInt(q.points) // Frontend: points -> Backend: score
+          // Lưu ý: Backend QuestionRequest hiện tại KHÔNG có trường 'type' (Trắc nghiệm/Tự luận)
+          // Nếu cần, bạn phải update Backend thêm field 'type' vào QuestionRequest.java
+        }))
+      };
+
+      console.log("Sending Assignment Payload:", payload); // Debug xem dữ liệu đúng chưa
+
+      // Gọi API
+      await createClassAssignmentAPI(selectedClass.id, payload);
+
+      // Refresh lại danh sách
+      await fetchAssignments();
+
+      // Reset UI
+      setShowCreateAssignment(false);
+      resetAssignmentForm();
+      setActiveContent('assignment-list');
+      alert('Tạo bài tập thành công!');
+
+    } catch (error) {
+      console.error("Error creating assignment:", error);
+      alert('Lỗi khi tạo bài tập: ' + (error.response?.data?.message || error.message));
+    }
+  }, [selectedClass, fetchAssignments]);
 
   const handleCancelAssignment = useCallback(() => {
     setShowCreateAssignment(false);
@@ -293,6 +340,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
           showCreateAnnouncement={showCreateAnnouncement}
           showUploadMaterial={showUploadMaterial}
           assignmentFormData={assignmentFormData}
+          assignments={assignments}
           currentQuestion={currentQuestion}
           announcements={announcements}
           materials={materials}

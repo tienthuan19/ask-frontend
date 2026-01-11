@@ -74,7 +74,7 @@ export const getTypeIcon = (type) => {
   const icons = {
     assignment: '📝',
     submission: '📤',
-    deadline: '⏰',
+    dueDate: '⏰',
     grade: '📊',
     message: '💬',
     system: '⚙️'

@@ -20,9 +20,10 @@ const AssignmentList = ({ assignments = [], onDelete, onExtend }) => {
       <h3>📋 Danh sách bài tập</h3>
       <div className="assignment-grid">
         {assignments.map(assignment => {
-          const daysLeft = getDaysUntilDeadline(assignment.deadline);
-          const overdue = isOverdue(assignment.deadline);
-          
+            if (!assignment) return null;
+          const daysLeft = getDaysUntilDeadline(assignment.dueDate);
+          const overdue = isOverdue(assignment.dueDate);
+
           return (
             <div key={assignment.id} className="assignment-card">
               <div className="assignment-header">
@@ -33,11 +34,11 @@ const AssignmentList = ({ assignments = [], onDelete, onExtend }) => {
               <p className="assignment-description">{assignment.description}</p>
               
               <div className="assignment-meta">
-                <span>⏰ Deadline: {formatDate(assignment.deadline)}</span>
+                <span>⏰ Deadline: {formatDate(assignment.dueDate)}</span>
                 <span>📊 Điểm tối đa: {assignment.maxScore}</span>
                 <span>❓ Số câu hỏi: {assignment.questions?.length || 0}</span>
                 
-                {assignment.deadline && (
+                {assignment.dueDate && (
                   <span className={`deadline-status ${overdue ? 'overdue' : 'active'}`}>
                     {overdue 
                       ? '🔴 Đã quá hạn' 

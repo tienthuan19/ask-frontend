@@ -1,7 +1,7 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { Button } from '../../../ui/index.js';
 
-const CreateAssignment = ({ 
+const CreateAssignment = ({
   show,
   formData,
   currentQuestion,
@@ -12,12 +12,21 @@ const CreateAssignment = ({
   onCreate,
   onCancel
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!show) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // Thêm async
     e.preventDefault();
     if (formData.title?.trim() && formData.questions?.length > 0) {
-      onCreate(formData);
+      setIsSubmitting(true); // Khóa nút
+      try {
+        await onCreate(formData); // Chờ hàm cha xử lý API
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSubmitting(false); // Mở khóa (nếu form chưa đóng)
+      }
     } else {
       alert('Vui lòng nhập tiêu đề và thêm ít nhất 1 câu hỏi!');
     }
@@ -247,11 +256,20 @@ const CreateAssignment = ({
 
         {/* Actions */}
         <div className="form-actions">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+          >
             ❌ Hủy bỏ
           </Button>
-          <Button type="submit" variant="primary">
-            ✅ Tạo bài tập
+          <Button
+              type="submit"
+              variant="primary"
+              disabled={isSubmitting}
+          >
+            {isSubmitting ? '⏳ Đang tạo...' : '✅ Tạo bài tập'}
           </Button>
         </div>
       </form>

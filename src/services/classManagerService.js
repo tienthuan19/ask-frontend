@@ -74,19 +74,6 @@ export const joinClassAPI = async (classCode) => {
   }
 };
 
-/**
- * Get class details (assignments etc.)
- * Used by both Teacher and Student
- */
-export const getClassAssignmentsAPI = async (classroomId) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}/assignments`, getAuthHeaders());
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
-
 // --- CÁC HÀM MỚI ĐƯỢC THÊM VÀO ---
 
 /**
@@ -132,6 +119,44 @@ export const getMyNotificationsAPI = async () => {
   try {
     const response = await axios.get(`${API_BASE_URL}/notifications`, getAuthHeaders());
     return response.data.result || response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// src/services/classManagerService.js
+
+// ... (Giữ nguyên các hàm cũ)
+
+// --- ASSIGNMENT APIs ---
+
+/**
+ * Lấy danh sách bài tập của lớp
+ * GET /api/lms-backend/v1/classrooms/{classroomId}/assignments
+ */
+export const getClassAssignmentsAPI = async (classroomId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}/assignments`, getAuthHeaders());
+    // Backend trả về ApiResponse<List<AssignmentResponse>>, dữ liệu nằm trong field 'data'
+    return response.data.data || [];
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Tạo bài tập mới
+ * POST /api/lms-backend/v1/classrooms/{classroomId}/assignments
+ */
+export const createClassAssignmentAPI = async (classroomId, assignmentData) => {
+  try {
+    const response = await axios.post(
+        `${API_BASE_URL}/classrooms/${classroomId}/assignments`,
+        assignmentData,
+        getAuthHeaders()
+    );
+    // Backend trả về ApiResponse<AssignmentResponse>
+    return response.data.data;
   } catch (error) {
     throw error;
   }
