@@ -102,6 +102,7 @@ const AssignmentPage = () => {
   const [error, setError] = useState(null);
 
   // Form State
+  const [answersMap, setAnswersMap] = useState({});
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState(null);
 
@@ -152,91 +153,64 @@ const AssignmentPage = () => {
     return () => clearInterval(timer);
   }, [timeRemaining, isSubmitted]);
 
-  // 3. Handle File Upload
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Giới hạn dung lượng (ví dụ 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert("File quá lớn! Vui lòng chọn file dưới 10MB.");
+  const handleAnswerChange = (questionId, value) => {
+    setAnswersMap(prev => ({
+      ...prev,
+      [questionId]: value // Cập nhật câu trả lời cho câu hỏi tương ứng
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // Validate: Ít nhất phải trả lời 1 câu (hoặc tùy logic của bạn)
+    const hasAnswer = Object.values(answersMap).some(ans => ans && ans.trim().length > 0);
+
+    if (!hasAnswer) {
+      if(!window.confirm("Bạn chưa nhập câu trả lời nào. Bạn có chắc chắn muốn nộp giấy trắng?")) {
         return;
       }
-      setSubmissionFile(file);
-    }
-  };
-
-  const handleRemoveFile = () => {
-    setSubmissionFile(null);
-  };
-
-  // 4. Submit Function
-  const handleSubmit = async () => {
-    // Validate cơ bản
-    if (!submissionText.trim()) {
-      alert('Vui lòng nhập nội dung bài làm!');
-      return;
-    }
-
-    // Backend hiện tại không nhận File trong JSON request này, nên ta tạm bỏ qua submissionFile
-    if (submissionFile) {
-      alert('Lưu ý: Hệ thống hiện tại chưa hỗ trợ gửi file đính kèm qua kênh này. Chỉ nội dung văn bản được gửi.');
-    }
-
-    if (window.confirm("Bạn có chắc chắn muốn nộp bài không?")) {
-      setIsSubmitting(true);
-
-      try {
-        // 1. Tạo cấu trúc dữ liệu khớp với SubmissionRequest của Backend
-        // Backend cần: List<AnswerRequest> answers;
-        // AnswerRequest gồm: String questionId, String studentAnswer;
-
-        let answersPayload = [];
-
-        if (assignment.questions && assignment.questions.length > 0) {
-          // Cách 1: Nếu UI chỉ có 1 ô text, ta gán text đó cho câu hỏi đầu tiên (Essay)
-          // Hoặc gán cho tất cả câu hỏi (tùy logic bạn muốn tạm thời)
-
-          // Ở đây tôi map text trả lời vào câu hỏi đầu tiên tìm thấy
-          answersPayload.push({
-            questionId: assignment.questions[0].id,
-            studentAnswer: submissionText
-          });
-
-          // Nếu muốn map các câu còn lại là rỗng để không bị lỗi thiếu answers (nếu backend bắt buộc)
-          // for (let i = 1; i < assignment.questions.length; i++) {
-          //    answersPayload.push({ questionId: assignment.questions[i].id, studentAnswer: "" });
-          // }
-        } else {
-          // Trường hợp bài tập không có câu hỏi cụ thể (Edge case)
-          console.warn("Bài tập không có danh sách câu hỏi để map ID");
-        }
-
-        const payload = {
-          answers: answersPayload
-        };
-
-        // 2. Gọi API (truyền assignmentId và payload JSON)
-        await submitAssignmentAPI(assignmentId, payload);
-
-        setIsSubmitted(true);
-        alert('Nộp bài thành công!');
-
-        setTimeout(() => navigate('/student'), 2000);
-
-      } catch (err) {
-        console.error("Lỗi nộp bài:", err);
-        // Hiển thị thông báo lỗi từ Backend trả về (nếu có)
-        const serverMsg = err.response?.data?.message || 'Có lỗi xảy ra khi nộp bài.';
-        alert('Lỗi: ' + serverMsg);
-        setIsSubmitting(false);
+    } else {
+      if (!window.confirm("Bạn có chắc chắn muốn nộp bài không?")) {
+        return;
       }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // --- XÂY DỰNG PAYLOAD JSON ---
+      // Duyệt qua danh sách câu hỏi gốc để đảm bảo thứ tự và đủ câu
+      const answersPayload = assignment.questions.map(q => ({
+        questionId: q.id,
+        // Lấy nội dung từ state, nếu chưa nhập thì gửi chuỗi rỗng
+        studentAnswer: answersMap[q.id] || ""
+        // Lưu ý: Backend SubmissionRequest dùng field 'studentAnswer' (trong code Java bạn gửi)
+        // Nếu Backend bạn đổi thành 'content' như comment ví dụ của bạn, hãy sửa dòng trên thành:
+        // content: answersMap[q.id] || ""
+      }));
+
+      const payload = {
+        answers: answersPayload
+      };
+
+      // Gọi API gửi JSON
+      await submitAssignmentAPI(assignmentId, payload);
+
+      setIsSubmitted(true);
+      alert('Nộp bài thành công!');
+      setTimeout(() => navigate('/student-dashboard'), 2000);
+
+    } catch (err) {
+      console.error("Lỗi nộp bài:", err);
+      const serverMsg = err.response?.data?.message || 'Có lỗi xảy ra khi nộp bài.';
+      alert('Lỗi: ' + serverMsg);
+      setIsSubmitting(false);
     }
   };
 
   const handleAutoSubmit = () => {
     if (!isSubmitted) {
       alert('Hết thời gian! Hệ thống sẽ tự động nộp bài làm hiện tại của bạn.');
-      handleSubmit(); // Gọi submit ngay lập tức
+      handleSubmit();
     }
   };
 
@@ -247,7 +221,6 @@ const AssignmentPage = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Render Loading / Error
   if (loading) return <div className="assignment-page loading"><div className="loading-spinner">⏳ Đang tải đề bài...</div></div>;
   if (error) return <div className="assignment-page error"><div className="error-message">❌ {error}</div></div>;
   if (!assignment) return null;
@@ -261,17 +234,80 @@ const AssignmentPage = () => {
       />
 
       <div className="assignment-content">
-        <AssignmentDetails assignment={assignment} />
-        
-        <SubmissionForm
-          submissionText={submissionText}
-          setSubmissionText={setSubmissionText}
-          submissionFile={submissionFile}
-          handleFileChange={handleFileChange}
-          handleSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-          isSubmitted={isSubmitted}
-        />
+        <div className="assignment-details">
+          <div className="description-section">
+            <h3>📝 Mô tả bài tập</h3>
+            <p>{assignment.description || "Không có mô tả chi tiết."}</p>
+          </div>
+        </div>
+
+        {/* --- DANH SÁCH CÂU HỎI & KHUNG TRẢ LỜI --- */}
+        <div className="questions-container">
+          {assignment.questions && assignment.questions.length > 0 ? (
+              assignment.questions.map((q, index) => (
+                  <div key={q.id} className="question-block" style={{ marginBottom: '30px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', background: '#fff' }}>
+
+                    {/* 1. Nội dung câu hỏi */}
+                    <div className="question-header" style={{ marginBottom: '15px' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#2c3e50' }}>Câu hỏi {index + 1}:</h4>
+                      <div className="question-content" style={{ fontSize: '1.1em', fontWeight: '500' }}>
+                        {q.content}
+                      </div>
+                      <div className="question-score" style={{ marginTop: '5px', fontSize: '0.9em', color: '#666' }}>
+                        (Điểm: {q.score})
+                      </div>
+                    </div>
+
+                    {/* 2. Khung trả lời riêng cho từng câu */}
+                    <div className="answer-area">
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9em' }}>
+                        ✍️ Câu trả lời của bạn:
+                      </label>
+                      <textarea
+                          className="answer-input"
+                          rows={5}
+                          placeholder={`Nhập câu trả lời cho câu ${index + 1}...`}
+                          value={answersMap[q.id] || ''}
+                          onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                          disabled={isSubmitting || isSubmitted}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            border: '1px solid #ccc',
+                            resize: 'vertical',
+                            fontFamily: 'inherit'
+                          }}
+                      />
+                    </div>
+                  </div>
+              ))
+          ) : (
+              <p>Bài tập này không có câu hỏi nào.</p>
+          )}
+        </div>
+
+        {/* --- NÚT NỘP BÀI (Ở CUỐI TRANG) --- */}
+        <div className="submission-actions" style={{ marginTop: '20px', textAlign: 'right' }}>
+          <button
+              className="btn-submit"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isSubmitted}
+              style={{
+                padding: '12px 30px',
+                fontSize: '1.1em',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: (isSubmitting || isSubmitted) ? 'not-allowed' : 'pointer',
+                opacity: (isSubmitting || isSubmitted) ? 0.7 : 1
+              }}
+          >
+            {isSubmitting ? '⏳ Đang nộp...' : isSubmitted ? '✅ Đã nộp thành công' : '📤 Nộp bài thi'}
+          </button>
+        </div>
+
       </div>
     </div>
   );
