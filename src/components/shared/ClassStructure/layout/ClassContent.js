@@ -11,7 +11,7 @@ import {
 } from '../components/index.js';
 
 const ClassContent = ({ 
-  activeContent,
+  activeContent, assignments,
   selectedClass,
   showCreateAssignment,
   showCreateAnnouncement,
@@ -89,7 +89,7 @@ const ClassContent = ({
       case 'assignment-list':
         return (
           <AssignmentList
-            assignments={selectedClass.assignments}
+            assignments={assignments}
             onDelete={onDeleteAssignment}
             onExtend={onExtendDeadline}
           />

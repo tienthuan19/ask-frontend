@@ -157,7 +157,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
         description: formData.description,
         // Backend cần LocalDateTime (ISO format). Frontend datetime-local trả về 'YYYY-MM-DDTHH:mm'
         // Ta cần đảm bảo nó đúng chuẩn ISO 8601
-        dueDate: formData.deadline ? new Date(formData.deadline).toISOString() : null,
+        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
         duration: parseInt(formData.timeLimit), // Backend: Integer duration
         maxScore: parseInt(formData.maxScore),  // Backend: Integer maxScore
 
