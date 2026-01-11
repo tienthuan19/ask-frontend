@@ -161,3 +161,37 @@ export const createClassAssignmentAPI = async (classroomId, assignmentData) => {
     throw error;
   }
 };
+
+export const getAssignmentDetailAPI = async (assignmentId) => {
+  try {
+    const response = await axios.get(
+        `${API_BASE_URL}/assignments/${assignmentId}`,
+        getAuthHeaders()
+    );
+    // Backend: ApiResponse<AssignmentDetailResponse>
+    return response.data.data || response.data.result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 2. Nộp bài tập
+export const submitAssignmentAPI = async (submissionData) => {
+  try {
+    // submissionData là object FormData
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+        `${API_BASE_URL}/submissions`,
+        submissionData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data' // Quan trọng để gửi file
+          }
+        }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};

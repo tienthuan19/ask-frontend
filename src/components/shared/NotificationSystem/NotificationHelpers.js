@@ -32,26 +32,39 @@ export const checkDeadlines = (classes) => {
   const notifications = [];
   
   if (!classes || !Array.isArray(classes)) return notifications;
-  
-  classes.forEach(cls => {
-    if (cls.assignments && Array.isArray(cls.assignments)) {
-      cls.assignments.forEach(assignment => {
-        if (assignment.dueDate) {
-          const dueDate = new Date(assignment.dueDate);
-          const hoursUntilDue = (dueDate - now) / (1000 * 60 * 60);
-          
-          if (hoursUntilDue > 0 && hoursUntilDue <= 24) {
-            notifications.push({
-              id: `deadline-${assignment.id || Date.now()}`,
-              type: 'deadline',
-              priority: 'urgent',
-              message: `Bài tập "${assignment.title}" sắp đến hạn trong ${Math.round(hoursUntilDue)} giờ`,
-              timestamp: new Date().toISOString(),
-              read: false,
-              assignment,
-              className: cls.name
-            });
-          }
+
+  classes.forEach(classItem => {
+    // Kiểm tra classItem và mảng assignments
+    if (classItem && classItem.assignments && Array.isArray(classItem.assignments)) {
+      classItem.assignments.forEach(assignment => {
+        // --- KHẮC PHỤC LỖI Ở ĐÂY ---
+        // Bỏ qua nếu assignment bị null
+        if (!assignment) return;
+
+        // Lấy ngày hết hạn (ưu tiên dueDate từ API, fallback sang deadline cũ)
+        const dateStr = assignment.dueDate || assignment.deadline;
+
+        // Bỏ qua nếu không có ngày hết hạn
+        if (!dateStr) return;
+
+        const deadline = new Date(dateStr);
+
+        // Bỏ qua nếu ngày không hợp lệ
+        if (isNaN(deadline.getTime())) return;
+
+        const timeDiff = deadline - now;
+        const hoursLeft = timeDiff / (1000 * 60 * 60);
+
+        // Thông báo nếu còn dưới 24 giờ
+        if (hoursLeft > 0 && hoursLeft <= 24) {
+          notifications.push({
+            id: `deadline-${assignment.id}`,
+            type: 'deadline',
+            priority: 'urgent',
+            message: `Hạn chót bài tập "${assignment.title}" trong lớp ${classItem.name || 'Lớp học'} sắp hết hạn (còn ${Math.ceil(hoursLeft)} giờ)`,
+            timestamp: new Date().toISOString(),
+            read: false
+          });
         }
       });
     }

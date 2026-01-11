@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import '../../styles/components/assignment.css';
+import {
+  getAssignmentDetailAPI,
+  getClassAssignmentsAPI,
+  submitAssignmentAPI
+} from '../../services/classManagerService.js';
+import { formatDate, getDaysUntilDeadline, isOverdue } from '../../utils/dateHelpers.js';
 
 // AssignmentHeader Component
 const AssignmentHeader = ({ assignment, timeRemaining, formatTime }) => (
@@ -99,25 +105,53 @@ const SubmissionForm = ({
 const AssignmentPage = () => {
   const { assignmentId } = useParams();
   const navigate = useNavigate();
-  
+
   const [assignment, setAssignment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Form State
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState(null);
+
+  // Timer State
   const [timeRemaining, setTimeRemaining] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // 1. Fetch Data
   useEffect(() => {
-    loadAssignmentData();
+    const fetchAssignmentData = async () => {
+      if (!assignmentId) return;
+      try {
+        setLoading(true);
+        const data = await getAssignmentDetailAPI(assignmentId);
+        setAssignment(data);
+
+        // Thiết lập timer: Backend trả về 'duration' (phút) -> đổi ra giây
+        if (data.duration && data.duration > 0) {
+          setTimeRemaining(data.duration * 60);
+        }
+      } catch (err) {
+        console.error("Error loading assignment:", err);
+        setError("Không thể tải nội dung bài tập.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignmentData();
   }, [assignmentId]);
 
+  // 2. Timer Logic (Countdown)
   useEffect(() => {
-    if (timeRemaining === null || timeRemaining <= 0) return;
-    
+    if (timeRemaining === null || timeRemaining <= 0 || isSubmitted) return;
+
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          handleAutoSubmit();
+          clearInterval(timer);
+          handleAutoSubmit(); // Hết giờ tự nộp
           return 0;
         }
         return prev - 1;
@@ -125,66 +159,65 @@ const AssignmentPage = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining]);
+  }, [timeRemaining, isSubmitted]);
 
-  const loadAssignmentData = () => {
-    const mockAssignment = {
-      id: assignmentId,
-      title: "Bài tập số 1: Toán học cơ bản",
-      description: "Giải các bài tập về phép tính cơ bản và ứng dụng trong thực tế.",
-      dueDate: "2024-01-20",
-      maxScore: 10,
-      timeLimit: 3600,
-      requirements: [
-        "Trình bày rõ ràng các bước giải",
-        "Sử dụng đúng ký hiệu toán học",
-        "Đưa ra kết luận cho mỗi bài",
-        "File đính kèm phải có định dạng PDF hoặc DOCX"
-      ],
-      questions: [
-        { id: 1, question: "Câu 1: Tính giá trị của biểu thức 2x + 3y khi x = 5, y = 2", points: 2 },
-        { id: 2, question: "Câu 2: Giải phương trình bậc nhất: 3x - 7 = 14", points: 3 },
-        { id: 3, question: "Câu 3: Tính diện tích và chu vi hình chữ nhật 12cm x 8cm", points: 3 },
-        { id: 4, question: "Câu 4: Tính tỷ lệ phần trăm học sinh nữ trong lớp 30 học sinh, 18 nam", points: 2 }
-      ]
-    };
-    
-    setAssignment(mockAssignment);
-    setTimeRemaining(mockAssignment.timeLimit);
-  };
-
+  // 3. Handle File Upload
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-      if (allowedTypes.includes(file.type)) {
-        setSubmissionFile(file);
-      } else {
-        alert('Chỉ chấp nhận file PDF, DOC, DOCX hoặc TXT');
+      // Giới hạn dung lượng (ví dụ 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert("File quá lớn! Vui lòng chọn file dưới 10MB.");
+        return;
+      }
+      setSubmissionFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSubmissionFile(null);
+  };
+
+  // 4. Submit Function
+  const handleSubmit = async () => {
+    if (!submissionText.trim() && !submissionFile) {
+      alert('Vui lòng nhập nội dung bài làm hoặc đính kèm file!');
+      return;
+    }
+
+    if (window.confirm("Bạn có chắc chắn muốn nộp bài không?")) {
+      setIsSubmitting(true);
+
+      try {
+        const formData = new FormData();
+        // Các trường này phải khớp với Backend (SubmissionRequest)
+        formData.append('assignmentId', assignmentId);
+        formData.append('content', submissionText);
+
+        if (submissionFile) {
+          formData.append('file', submissionFile);
+        }
+
+        await submitAssignmentAPI(formData);
+
+        setIsSubmitted(true);
+        alert('Nộp bài thành công!');
+
+        // Sau khi nộp xong, quay lại dashboard sau 2s
+        setTimeout(() => navigate('/student'), 2000);
+
+      } catch (err) {
+        console.error("Lỗi nộp bài:", err);
+        alert('Có lỗi xảy ra khi nộp bài. Vui lòng thử lại.');
+        setIsSubmitting(false);
       }
     }
   };
 
-  const handleSubmit = async () => {
-    if (!submissionText.trim()) {
-      alert('Vui lòng nhập nội dung bài làm');
-      return;
-    }
-
-    setIsSubmitting(true);
-    
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      alert('Nộp bài thành công!');
-      setTimeout(() => navigate('/student-dashboard'), 2000);
-    }, 1500);
-  };
-
   const handleAutoSubmit = () => {
     if (!isSubmitted) {
-      alert('Hết thời gian! Bài làm sẽ được tự động nộp.');
-      handleSubmit();
+      alert('Hết thời gian! Hệ thống sẽ tự động nộp bài làm hiện tại của bạn.');
+      handleSubmit(); // Gọi submit ngay lập tức
     }
   };
 
@@ -195,13 +228,10 @@ const AssignmentPage = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!assignment) {
-    return (
-      <div className="assignment-page loading">
-        <div className="loading-spinner">Đang tải bài tập...</div>
-      </div>
-    );
-  }
+  // Render Loading / Error
+  if (loading) return <div className="assignment-page loading"><div className="loading-spinner">⏳ Đang tải đề bài...</div></div>;
+  if (error) return <div className="assignment-page error"><div className="error-message">❌ {error}</div></div>;
+  if (!assignment) return null;
 
   return (
     <div className="assignment-page">
