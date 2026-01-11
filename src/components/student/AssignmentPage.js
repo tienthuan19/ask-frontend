@@ -36,21 +36,12 @@ const AssignmentDetails = ({ assignment }) => (
       <p>{assignment.description}</p>
     </div>
     
-    <div className="requirements-section">
-      <h3>📋 Yêu cầu</h3>
-      <ul>
-        {assignment.requirements.map((req, index) => (
-          <li key={index}>{req}</li>
-        ))}
-      </ul>
-    </div>
-    
     <div className="questions-section">
       <h3>❓ Câu hỏi</h3>
       {assignment.questions.map((q) => (
         <div key={q.id} className="question-item">
-          <p>{q.question}</p>
-          <span className="points">({q.points} điểm)</span>
+          <p>{q.content}</p>
+          <span className="points">({q.score} điểm)</span>
         </div>
       ))}
     </div>
@@ -180,35 +171,63 @@ const AssignmentPage = () => {
 
   // 4. Submit Function
   const handleSubmit = async () => {
-    if (!submissionText.trim() && !submissionFile) {
-      alert('Vui lòng nhập nội dung bài làm hoặc đính kèm file!');
+    // Validate cơ bản
+    if (!submissionText.trim()) {
+      alert('Vui lòng nhập nội dung bài làm!');
       return;
+    }
+
+    // Backend hiện tại không nhận File trong JSON request này, nên ta tạm bỏ qua submissionFile
+    if (submissionFile) {
+      alert('Lưu ý: Hệ thống hiện tại chưa hỗ trợ gửi file đính kèm qua kênh này. Chỉ nội dung văn bản được gửi.');
     }
 
     if (window.confirm("Bạn có chắc chắn muốn nộp bài không?")) {
       setIsSubmitting(true);
 
       try {
-        const formData = new FormData();
-        // Các trường này phải khớp với Backend (SubmissionRequest)
-        formData.append('assignmentId', assignmentId);
-        formData.append('content', submissionText);
+        // 1. Tạo cấu trúc dữ liệu khớp với SubmissionRequest của Backend
+        // Backend cần: List<AnswerRequest> answers;
+        // AnswerRequest gồm: String questionId, String studentAnswer;
 
-        if (submissionFile) {
-          formData.append('file', submissionFile);
+        let answersPayload = [];
+
+        if (assignment.questions && assignment.questions.length > 0) {
+          // Cách 1: Nếu UI chỉ có 1 ô text, ta gán text đó cho câu hỏi đầu tiên (Essay)
+          // Hoặc gán cho tất cả câu hỏi (tùy logic bạn muốn tạm thời)
+
+          // Ở đây tôi map text trả lời vào câu hỏi đầu tiên tìm thấy
+          answersPayload.push({
+            questionId: assignment.questions[0].id,
+            studentAnswer: submissionText
+          });
+
+          // Nếu muốn map các câu còn lại là rỗng để không bị lỗi thiếu answers (nếu backend bắt buộc)
+          // for (let i = 1; i < assignment.questions.length; i++) {
+          //    answersPayload.push({ questionId: assignment.questions[i].id, studentAnswer: "" });
+          // }
+        } else {
+          // Trường hợp bài tập không có câu hỏi cụ thể (Edge case)
+          console.warn("Bài tập không có danh sách câu hỏi để map ID");
         }
 
-        await submitAssignmentAPI(formData);
+        const payload = {
+          answers: answersPayload
+        };
+
+        // 2. Gọi API (truyền assignmentId và payload JSON)
+        await submitAssignmentAPI(assignmentId, payload);
 
         setIsSubmitted(true);
         alert('Nộp bài thành công!');
 
-        // Sau khi nộp xong, quay lại dashboard sau 2s
         setTimeout(() => navigate('/student'), 2000);
 
       } catch (err) {
         console.error("Lỗi nộp bài:", err);
-        alert('Có lỗi xảy ra khi nộp bài. Vui lòng thử lại.');
+        // Hiển thị thông báo lỗi từ Backend trả về (nếu có)
+        const serverMsg = err.response?.data?.message || 'Có lỗi xảy ra khi nộp bài.';
+        alert('Lỗi: ' + serverMsg);
         setIsSubmitting(false);
       }
     }

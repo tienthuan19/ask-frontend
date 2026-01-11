@@ -80,12 +80,20 @@ const Student = () => {
 
   const loadClassAssignments = async (classId) => {
     try {
-      const response = await getClassAssignmentsAPI(classId);
-      if (response && response.data) {
-        setAssignments(response.data);
+      // Service trả về: [ {id: 1...}, {id: 2...} ]
+      const data = await getClassAssignmentsAPI(classId);
+
+      // Kiểm tra nếu là mảng thì set luôn
+      if (Array.isArray(data)) {
+        // Lọc bỏ phần tử null để tránh lỗi render
+        const validAssignments = data.filter(item => item !== null);
+        setAssignments(validAssignments);
+      } else {
+        setAssignments([]);
       }
     } catch (error) {
       console.error("Failed to load assignments:", error);
+      setAssignments([]);
     }
   };
 
@@ -401,27 +409,31 @@ const Student = () => {
               </div>
             ) : (
               <div className="assignments-list">
-                {assignments.map((assignment) => (
-                  <div key={assignment.id} className="assignment-item">
-                    <div className="assignment-info">
-                      <h4>{assignment.title}</h4>
-                      <p>{assignment.description || 'Không có mô tả'}</p>
-                      <div className="assignment-meta">
-                        <span className="due-date">📅 Hạn nộp: {assignment.deadline || assignment.dueDate || 'Không có hạn'}</span>
-                        {assignment.timeLimit && <span className="time-limit">⏱️ {assignment.timeLimit} phút</span>}
-                        {assignment.maxScore && <span className="max-score">🎯 {assignment.maxScore} điểm</span>}
+                {assignments.map((assignment) => {
+                  if (!assignment) return null;
+                  return (
+                      <div key={assignment.id} className="assignment-item">
+                        <div className="assignment-info">
+                          <h4>{assignment.title}</h4>
+                          <p>{assignment.description || 'Không có mô tả'}</p>
+                          <div className="assignment-meta">
+                            <span
+                                className="due-date">📅 Hạn nộp: {assignment.deadline || assignment.dueDate || 'Không có hạn'}</span>
+                            {assignment.timeLimit && <span className="time-limit">⏱️ {assignment.timeLimit} phút</span>}
+                            {assignment.maxScore && <span className="max-score">🎯 {assignment.maxScore} điểm</span>}
+                          </div>
+                        </div>
+                        <div className="assignment-actions">
+                          <button
+                              className="btn-primary"
+                              onClick={() => navigate(`/assignment/${assignment.id}`)}
+                          >
+                            ✏️ Làm bài
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="assignment-actions">
-                      <button 
-                        className="btn-primary"
-                        onClick={() => navigate(`/assignment/${assignment.id}`)}
-                      >
-                        ✏️ Làm bài
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

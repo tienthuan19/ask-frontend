@@ -1,6 +1,7 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import useClassNavigation from '../../../hooks/useClassNavigation.js';
 import useAssignmentForm from '../../../hooks/useAssignmentForm.js';
+import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
 import { getClassAnnouncementsAPI,
   createClassAnnouncementAPI,
   getClassAssignmentsAPI,
@@ -9,7 +10,7 @@ import { getClassAnnouncementsAPI,
 import { ClassHeader, ClassSidebar, ClassContent } from './layout/index.js';
 import '../../../styles/components/class-structure.css';
 
-const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
+const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
   const [showCreateAssignment, setShowCreateAssignment] = useState(false);
   const [showCreateAnnouncement, setShowCreateAnnouncement] = useState(false);
   const [showUploadMaterial, setShowUploadMaterial] = useState(false);
@@ -319,6 +320,10 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
     );
   }
 
+  const handleStartAssignment = (assignmentId) => {
+    navigate(`/assignment/${assignmentId}`);
+  };
+
   return (
     <div className="class-structure">
       <ClassHeader 
@@ -341,6 +346,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass }) => {
           showUploadMaterial={showUploadMaterial}
           assignmentFormData={assignmentFormData}
           assignments={assignments}
+          onStartAssignment={userRole === 'STUDENT' ? handleStartAssignment : null}
           currentQuestion={currentQuestion}
           announcements={announcements}
           materials={materials}

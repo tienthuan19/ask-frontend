@@ -165,8 +165,9 @@ export const createClassAssignmentAPI = async (classroomId, assignmentData) => {
 export const getAssignmentDetailAPI = async (assignmentId) => {
   try {
     const response = await axios.get(
-        `${API_BASE_URL}/assignments/${assignmentId}`,
+        `${API_BASE_URL}/classrooms/assignments/${assignmentId}`,
         getAuthHeaders()
+        ///api/lms-backend/v1/classrooms/assignments/{assignmentId}
     );
     // Backend: ApiResponse<AssignmentDetailResponse>
     return response.data.data || response.data.result;
@@ -176,17 +177,21 @@ export const getAssignmentDetailAPI = async (assignmentId) => {
 };
 
 // 2. Nộp bài tập
-export const submitAssignmentAPI = async (submissionData) => {
+export const submitAssignmentAPI = async (assignmentId, submissionData) => {
   try {
-    // submissionData là object FormData
     const token = localStorage.getItem('token');
+
+    // submissionData format: { answers: [{ questionId: "...", studentAnswer: "..." }] }
+
     const response = await axios.post(
-        `${API_BASE_URL}/submissions`,
+        // Lưu ý: Backend controller mapping thường là /assignments, kiểm tra lại AssignmentController của bạn
+        // Nếu class level là @RequestMapping("/assignments"), thì url dưới là đúng.
+        `${API_BASE_URL}/classrooms/${assignmentId}/submit`,
         submissionData,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data' // Quan trọng để gửi file
+            'Content-Type': 'application/json' // Gửi JSON thay vì multipart/form-data
           }
         }
     );
