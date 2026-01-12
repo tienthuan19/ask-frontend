@@ -12,7 +12,8 @@ import {
   joinClassAPI,
   getStudentPendingAssignmentsAPI,
   getClassAnnouncementsAPI,
-  getClassMembersAPI
+  getClassMembersAPI,
+  getStudentGradesAPI
 } from "../../services/classManagerService.js";
 
 const Student = () => {
@@ -30,6 +31,7 @@ const Student = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [classMembers, setClassMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [grades, setGrades] = useState([]); // <--- 2. State lưu điểm số
 
   const [studentInfo, setStudentInfo] = useState({
     id: localStorage.getItem('studentId') || 'student_' + Date.now(),
@@ -84,6 +86,8 @@ const Student = () => {
         loadClassAnnouncements(selectedClassId);
       }else if (activeClassTab === "members") {
         loadClassMembers(selectedClassId);
+      } else if (activeClassTab === "grades") {
+        loadStudentGrades(selectedClassId); // <--- 3. Gọi hàm load điểm
       }
     }
   }, [selectedClassId, activeClassTab, activeTab]);
@@ -102,6 +106,23 @@ const Student = () => {
     } catch (error) {
       console.error("Failed to load class members:", error);
       setClassMembers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadStudentGrades = async (classId) => {
+    try {
+      setIsLoading(true);
+      const data = await getStudentGradesAPI(classId);
+      if (Array.isArray(data)) {
+        setGrades(data);
+      } else {
+        setGrades([]);
+      }
+    } catch (error) {
+      console.error("Failed to load grades:", error);
+      setGrades([]);
     } finally {
       setIsLoading(false);
     }
@@ -239,6 +260,29 @@ const Student = () => {
     }
     const index = Math.abs(hash % colors.length);
     return colors[index];
+  };
+
+  const renderGradeStatus = (status) => {
+    const statusMap = {
+      'Đã chấm': { color: '#2ecc71', bg: '#e8f8f5', label: 'Đã chấm' },
+      'Đã nộp': { color: '#3498db', bg: '#eaf2f8', label: 'Đợi chấm' },
+      'Chưa nộp': { color: '#95a5a6', bg: '#f4f6f6', label: 'Chưa làm' },
+      'Quá hạn': { color: '#e74c3c', bg: '#fdedec', label: 'Quá hạn' }
+    };
+    const s = statusMap[status] || statusMap['Chưa nộp'];
+    return (
+        <span style={{
+          backgroundColor: s.bg,
+          color: s.color,
+          padding: '4px 10px',
+          borderRadius: '12px',
+          fontSize: '0.8rem',
+          fontWeight: 'bold',
+          border: `1px solid ${s.color}40`
+        }}>
+        {s.label}
+      </span>
+    );
   };
 
   return (
@@ -604,33 +648,86 @@ const Student = () => {
 
         {/* Tab: Điểm số */}
         {activeClassTab === "grades" && (
-          <div className="grades-section">
-            <div className="grades-card">
-              <h3>📊 Bảng điểm của bạn</h3>
-              {assignments.length === 0 ? (
-                <div className="empty-state">
-                  <div className="empty-icon">📊</div>
-                  <h4>Chưa có điểm số</h4>
-                  <p>Bạn chưa có điểm số nào trong lớp này</p>
-                </div>
-              ) : (
-                <div className="grades-table">
-                  <div className="grades-header">
-                    <span>Bài tập</span>
-                    <span>Trạng thái</span>
-                    <span>Điểm</span>
-                  </div>
-                  {assignments.map((assignment) => (
-                    <div key={assignment.id} className="grades-row">
-                      <span className="grade-title">{assignment.title}</span>
-                      <span className="grade-status pending">Chưa nộp</span>
-                      <span className="grade-score">--/{assignment.maxScore || 10}</span>
+            <div className="grades-section">
+              <div className="grades-card">
+                <h3>📊 Bảng điểm cá nhân</h3>
+
+                {isLoading ? (
+                    <div className="loading-state">⏳ Đang tải bảng điểm...</div>
+                ) : grades.length === 0 ? (
+                    <div className="empty-state">
+                      <div className="empty-icon">📝</div>
+                      <h4>Chưa có dữ liệu điểm</h4>
+                      <p>Bạn chưa làm bài tập nào hoặc giáo viên chưa chấm điểm.</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                ) : (
+                    <div className="grades-container">
+                      {/* Summary Box - Thống kê nhanh */}
+                      <div className="grades-summary" style={{
+                        display: 'flex', gap: '20px', marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px'
+                      }}>
+                        <div className="summary-item">
+                          <span style={{color: '#7f8c8d', fontSize: '0.9rem'}}>Trung bình môn</span>
+                          <strong style={{fontSize: '1.5rem', color: '#2c3e50'}}>
+                            {(() => {
+                              const graded = grades.filter(g => g.score !== null);
+                              if (graded.length === 0) return "--";
+                              const total = graded.reduce((sum, g) => sum + (g.score / g.maxScore * 10), 0);
+                              return (total / graded.length).toFixed(1);
+                            })()}
+                          </strong>
+                        </div>
+                        <div className="summary-item">
+                          <span style={{color: '#7f8c8d', fontSize: '0.9rem'}}>Số bài đã nộp</span>
+                          <strong style={{fontSize: '1.5rem', color: '#3498db'}}>
+                            {grades.filter(g => g.submissionId).length} / {grades.length}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Grades Table */}
+                      <div className="grades-table-wrapper" style={{overflowX: 'auto'}}>
+                        <table className="grades-table" style={{width: '100%', borderCollapse: 'collapse'}}>
+                          <thead>
+                          <tr style={{backgroundColor: '#f1f2f6', color: '#57606f', textAlign: 'left'}}>
+                            <th style={{padding: '12px', borderBottom: '2px solid #dfe4ea'}}>Bài tập</th>
+                            <th style={{padding: '12px', borderBottom: '2px solid #dfe4ea'}}>Ngày nộp</th>
+                            <th style={{padding: '12px', borderBottom: '2px solid #dfe4ea'}}>Trạng thái</th>
+                            <th style={{padding: '12px', borderBottom: '2px solid #dfe4ea'}}>Điểm số</th>
+                            <th style={{padding: '12px', borderBottom: '2px solid #dfe4ea', width: '30%'}}>Nhận xét</th>
+                          </tr>
+                          </thead>
+                          <tbody>
+                          {grades.map((grade) => (
+                              <tr key={grade.assignmentId} style={{borderBottom: '1px solid #f1f2f6'}}>
+                                <td style={{padding: '12px', fontWeight: '500'}}>
+                                  {grade.assignmentTitle}
+                                </td>
+                                <td style={{padding: '12px', color: '#7f8c8d', fontSize: '0.9rem'}}>
+                                  {grade.submittedAt ? new Date(grade.submittedAt).toLocaleDateString('vi-VN') : '--'}
+                                </td>
+                                <td style={{padding: '12px'}}>
+                                  {renderGradeStatus(grade.status)}
+                                </td>
+                                <td style={{padding: '12px', fontWeight: 'bold', fontSize: '1.1rem'}}>
+                                  {grade.score !== null ? (
+                                      <span style={{color: grade.score >= 5 ? '#27ae60' : '#e74c3c'}}>
+                                        {grade.score}/{grade.maxScore}
+                                    </span>
+                                  ) : '--'}
+                                </td>
+                                <td style={{padding: '12px', color: '#57606f', fontStyle: 'italic', fontSize: '0.9rem'}}>
+                                  {grade.feedback || (grade.score !== null ? "Không có nhận xét" : "")}
+                                </td>
+                              </tr>
+                          ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                )}
+              </div>
             </div>
-          </div>
         )}
 
         {/* Tab: Thành viên - ĐÃ CẬP NHẬT */}

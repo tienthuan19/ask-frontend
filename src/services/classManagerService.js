@@ -221,3 +221,15 @@ export const getClassMembersAPI = async (classroomId) => {
     throw error;
   }
 };
+
+export const getStudentGradesAPI = async (classroomId) => {
+  try {
+    const response = await axios.get(
+        `${API_BASE_URL}student/grades/${classroomId}`,
+        getAuthHeaders() // Hàm này cần tự động thêm X-User-Id hoặc Bearer Token chứa ID
+    );
+    return response.data.data || [];
+  } catch (error) {
+    throw error;
+  }
+};
