@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'; // 1. Import useNavigate
 import { getClassAnnouncementsAPI,
   createClassAnnouncementAPI,
   getClassAssignmentsAPI,
-  createClassAssignmentAPI
+  createClassAssignmentAPI,
+  getClassMembersAPI // <--- Import thêm hàm này
 } from '../../../services/classManagerService.js';
 import { ClassHeader, ClassSidebar, ClassContent } from './layout/index.js';
 import '../../../styles/components/class-structure.css';
@@ -19,6 +20,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
   const [announcements, setAnnouncements] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [students, setStudents] = useState([]);
 
   const fetchAnnouncements = useCallback(async () => {
     if (selectedClass && selectedClass.id) {
@@ -222,15 +224,15 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
   }, [selectedClass, onUpdateClass]);
 
   // Student handlers
-  const handleRemoveStudent = useCallback((studentId) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi lớp?')) {
-      const updatedClass = {
-        ...selectedClass,
-        students: selectedClass.students.filter(s => s.id !== studentId)
-      };
-      onUpdateClass(updatedClass);
-    }
-  }, [selectedClass, onUpdateClass]);
+  // const handleRemoveStudent = useCallback((studentId) => {
+  //   if (window.confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi lớp?')) {
+  //     const updatedClass = {
+  //       ...selectedClass,
+  //       students: selectedClass.students.filter(s => s.id !== studentId)
+  //     };
+  //     onUpdateClass(updatedClass);
+  //   }
+  // }, [selectedClass, onUpdateClass]);
 
   // Announcement handlers
   const handleSaveAnnouncement = useCallback(async (announcement) => {
@@ -320,6 +322,37 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     );
   }
 
+  const fetchClassMembers = useCallback(async () => {
+    if (selectedClass && selectedClass.id) {
+      try {
+        const data = await getClassMembersAPI(selectedClass.id);
+        // Lọc danh sách: Chỉ lấy role là STUDENT để hiển thị trong tab Học sinh
+        // Nếu muốn hiển thị cả giáo viên thì bỏ filter
+        const studentList = Array.isArray(data)
+            ? data.filter(member => member.role === 'STUDENT')
+            : [];
+        setStudents(studentList);
+      } catch (error) {
+        console.error("Failed to fetch class members:", error);
+      }
+    }
+  }, [selectedClass]);
+
+  // Cập nhật useEffect tổng để gọi hàm mới
+  useEffect(() => {
+    fetchAnnouncements();
+    fetchAssignments();
+    fetchClassMembers(); // <--- Gọi hàm fetch thành viên
+  }, [fetchAnnouncements, fetchAssignments, fetchClassMembers]);
+
+  const handleRemoveStudent = useCallback((studentId) => {
+    // TODO: Gọi API xóa học sinh (nếu cần backend hỗ trợ)
+    if (window.confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi lớp?')) {
+      // Tạm thời update state UI
+      setStudents(prev => prev.filter(s => s.id !== studentId));
+    }
+  }, []);
+
   const handleStartAssignment = (assignmentId) => {
     navigate(`/assignment/${assignmentId}`);
   };
@@ -359,7 +392,6 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
           onRemoveQuestion={removeQuestion}
           onCreateAssignment={handleCreateAssignment}
           onCancelAssignment={handleCancelAssignment}
-          onRemoveStudent={handleRemoveStudent}
           onSaveAnnouncement={handleSaveAnnouncement}
           onDeleteAnnouncement={handleDeleteAnnouncement}
           onEditAnnouncement={handleEditAnnouncement}
@@ -368,6 +400,8 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
           onDeleteMaterial={handleDeleteMaterial}
           onDownloadMaterial={handleDownloadMaterial}
           onCancelMaterial={handleCancelMaterial}
+          students={students}
+          onRemoveStudent={handleRemoveStudent}
         />
       </div>
     </div>

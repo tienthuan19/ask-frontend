@@ -61,55 +61,55 @@ const StudentList = ({ students = [], onRemove, onAddStudent }) => {
             </div>
           </div>
           <h3>Chưa có học sinh nào</h3>
-          <p>Chia sẻ mã lớp để học sinh tham gia hoặc thêm học sinh thủ công</p>
-          <button className="add-student-btn" onClick={() => setShowAddModal(true)}>
-            <span>➕</span> Thêm học sinh
-          </button>
+          <p>Chia sẻ mã lớp để học sinh tham gia</p>
+          {/*<button className="add-student-btn" onClick={() => setShowAddModal(true)}>*/}
+          {/*  <span>➕</span> Thêm học sinh*/}
+          {/*</button>*/}
         </div>
 
-        {showAddModal && (
-          <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-            <div className="add-student-modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3>➕ Thêm học sinh mới</h3>
-                <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>
-              </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Họ và tên <span className="required">*</span></label>
-                  <input
-                    type="text"
-                    value={newStudent.name}
-                    onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
-                    placeholder="Nhập họ và tên..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Email <span className="required">*</span></label>
-                  <input
-                    type="email"
-                    value={newStudent.email}
-                    onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
-                    placeholder="Nhập email..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Mã số sinh viên</label>
-                  <input
-                    type="text"
-                    value={newStudent.studentId}
-                    onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}
-                    placeholder="Nhập MSSV..."
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <Button variant="outline" onClick={() => setShowAddModal(false)}>Hủy</Button>
-                <Button variant="primary" onClick={handleAddStudent}>Thêm học sinh</Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/*{showAddModal && (*/}
+        {/*  <div className="modal-overlay" onClick={() => setShowAddModal(false)}>*/}
+        {/*    <div className="add-student-modal" onClick={e => e.stopPropagation()}>*/}
+        {/*      <div className="modal-header">*/}
+        {/*        <h3>➕ Thêm học sinh mới</h3>*/}
+        {/*        <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>*/}
+        {/*      </div>*/}
+        {/*      <div className="modal-body">*/}
+        {/*        <div className="form-group">*/}
+        {/*          <label>Họ và tên <span className="required">*</span></label>*/}
+        {/*          <input*/}
+        {/*            type="text"*/}
+        {/*            value={newStudent.name}*/}
+        {/*            onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}*/}
+        {/*            placeholder="Nhập họ và tên..."*/}
+        {/*          />*/}
+        {/*        </div>*/}
+        {/*        <div className="form-group">*/}
+        {/*          <label>Email <span className="required">*</span></label>*/}
+        {/*          <input*/}
+        {/*            type="email"*/}
+        {/*            value={newStudent.email}*/}
+        {/*            onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}*/}
+        {/*            placeholder="Nhập email..."*/}
+        {/*          />*/}
+        {/*        </div>*/}
+        {/*        <div className="form-group">*/}
+        {/*          <label>Mã số sinh viên</label>*/}
+        {/*          <input*/}
+        {/*            type="text"*/}
+        {/*            value={newStudent.studentId}*/}
+        {/*            onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}*/}
+        {/*            placeholder="Nhập MSSV..."*/}
+        {/*          />*/}
+        {/*        </div>*/}
+        {/*      </div>*/}
+        {/*      <div className="modal-footer">*/}
+        {/*        <Button variant="outline" onClick={() => setShowAddModal(false)}>Hủy</Button>*/}
+        {/*        <Button variant="primary" onClick={handleAddStudent}>Thêm học sinh</Button>*/}
+        {/*      </div>*/}
+        {/*    </div>*/}
+        {/*  </div>*/}
+        {/*)}*/}
       </div>
     );
   }
@@ -138,9 +138,9 @@ const StudentList = ({ students = [], onRemove, onAddStudent }) => {
             <button className="clear-search" onClick={() => setSearchTerm('')}>✕</button>
           )}
         </div>
-        <button className="add-btn" onClick={() => setShowAddModal(true)}>
-          <span>➕</span> Thêm học sinh
-        </button>
+        {/*<button className="add-btn" onClick={() => setShowAddModal(true)}>*/}
+        {/*  <span>➕</span> Thêm học sinh*/}
+        {/*</button>*/}
       </div>
 
       {/* Students Grid */}
@@ -202,49 +202,49 @@ const StudentList = ({ students = [], onRemove, onAddStudent }) => {
       )}
 
       {/* Add Student Modal */}
-      {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="add-student-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>➕ Thêm học sinh mới</h3>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Họ và tên <span className="required">*</span></label>
-                <input
-                  type="text"
-                  value={newStudent.name}
-                  onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
-                  placeholder="Nhập họ và tên..."
-                />
-              </div>
-              <div className="form-group">
-                <label>Email <span className="required">*</span></label>
-                <input
-                  type="email"
-                  value={newStudent.email}
-                  onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
-                  placeholder="Nhập email..."
-                />
-              </div>
-              <div className="form-group">
-                <label>Mã số sinh viên</label>
-                <input
-                  type="text"
-                  value={newStudent.studentId}
-                  onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}
-                  placeholder="Nhập MSSV..."
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <Button variant="outline" onClick={() => setShowAddModal(false)}>Hủy</Button>
-              <Button variant="primary" onClick={handleAddStudent}>Thêm học sinh</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/*{showAddModal && (*/}
+      {/*  <div className="modal-overlay" onClick={() => setShowAddModal(false)}>*/}
+      {/*    <div className="add-student-modal" onClick={e => e.stopPropagation()}>*/}
+      {/*      <div className="modal-header">*/}
+      {/*        <h3>➕ Thêm học sinh mới</h3>*/}
+      {/*        <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>*/}
+      {/*      </div>*/}
+      {/*      <div className="modal-body">*/}
+      {/*        <div className="form-group">*/}
+      {/*          <label>Họ và tên <span className="required">*</span></label>*/}
+      {/*          <input*/}
+      {/*            type="text"*/}
+      {/*            value={newStudent.name}*/}
+      {/*            onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}*/}
+      {/*            placeholder="Nhập họ và tên..."*/}
+      {/*          />*/}
+      {/*        </div>*/}
+      {/*        <div className="form-group">*/}
+      {/*          <label>Email <span className="required">*</span></label>*/}
+      {/*          <input*/}
+      {/*            type="email"*/}
+      {/*            value={newStudent.email}*/}
+      {/*            onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}*/}
+      {/*            placeholder="Nhập email..."*/}
+      {/*          />*/}
+      {/*        </div>*/}
+      {/*        <div className="form-group">*/}
+      {/*          <label>Mã số sinh viên</label>*/}
+      {/*          <input*/}
+      {/*            type="text"*/}
+      {/*            value={newStudent.studentId}*/}
+      {/*            onChange={(e) => setNewStudent({...newStudent, studentId: e.target.value})}*/}
+      {/*            placeholder="Nhập MSSV..."*/}
+      {/*          />*/}
+      {/*        </div>*/}
+      {/*      </div>*/}
+      {/*      <div className="modal-footer">*/}
+      {/*        <Button variant="outline" onClick={() => setShowAddModal(false)}>Hủy</Button>*/}
+      {/*        <Button variant="primary" onClick={handleAddStudent}>Thêm học sinh</Button>*/}
+      {/*      </div>*/}
+      {/*    </div>*/}
+      {/*  </div>*/}
+      {/*)}*/}
     </div>
   );
 };

@@ -212,3 +212,12 @@ export const submitAssignmentAPI = async (assignmentId, submissionData) => {
     throw error;
   }
 };
+
+export const getClassMembersAPI = async (classroomId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}/members`, getAuthHeaders());
+    return response.data.data || [];
+  } catch (error) {
+    throw error;
+  }
+};

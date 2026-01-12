@@ -11,7 +11,8 @@ import {
   getStudentClassesAPI,
   joinClassAPI,
   getStudentPendingAssignmentsAPI,
-  getClassAnnouncementsAPI
+  getClassAnnouncementsAPI,
+  getClassMembersAPI
 } from "../../services/classManagerService.js";
 
 const Student = () => {
@@ -27,6 +28,7 @@ const Student = () => {
   const [searchResult, setSearchResult] = useState(null);
   const [assignments, setAssignments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [classMembers, setClassMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [studentInfo, setStudentInfo] = useState({
@@ -80,11 +82,30 @@ const Student = () => {
         loadClassAssignments(selectedClassId);
       } else if (activeClassTab === "announcements") {
         loadClassAnnouncements(selectedClassId);
+      }else if (activeClassTab === "members") {
+        loadClassMembers(selectedClassId);
       }
     }
   }, [selectedClassId, activeClassTab, activeTab]);
 
   // --- Handlers ---
+
+  const loadClassMembers = async (classId) => {
+    try {
+      setIsLoading(true);
+      const data = await getClassMembersAPI(classId);
+      if (Array.isArray(data)) {
+        setClassMembers(data);
+      } else {
+        setClassMembers([]);
+      }
+    } catch (error) {
+      console.error("Failed to load class members:", error);
+      setClassMembers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleViewClass = async (classId) => {
     setSelectedClassId(classId);
@@ -208,6 +229,18 @@ const Student = () => {
   };
   const selectedClass = joinedClasses.find(c => c.id === selectedClassId);
 
+  const getAvatarColor = (name) => {
+    const colors = ['#1abc9c', '#2ecc71', '#3498db', '#9b59b6', '#34495e', '#16a085', '#27ae60', '#2980b9', '#8e44ad', '#2c3e50', '#f1c40f', '#e67e22', '#e74c3c', '#95a5a6', '#f39c12', '#d35400', '#c0392b', '#bdc3c7', '#7f8c8d'];
+    let hash = 0;
+    if (name) {
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+    }
+    const index = Math.abs(hash % colors.length);
+    return colors[index];
+  };
+
   return (
     <div className="student-dashboard">
       {/* Navigation - Same style as Teacher */}
@@ -218,35 +251,35 @@ const Student = () => {
             <span className="brand-text">GradingAI - Student</span>
           </div>
           <div className="nav-actions">
-            <button 
+            <button
               className={`nav-tab ${activeTab === "classes" ? "active" : ""}`}
               onClick={() => setActiveTab("classes")}
             >
               📚 Lớp học
             </button>
-            <button 
+            <button
               className={`nav-tab ${activeTab === "pending" ? "active" : ""}`}
               onClick={() => setActiveTab("pending")}
             >
               📝 Bài tập
             </button>
-            <button 
+            <button
               className={`nav-tab ${activeTab === "calendar" ? "active" : ""}`}
               onClick={() => setActiveTab("calendar")}
             >
               📅 Lịch học
             </button>
-            <button 
+            <button
               className={`nav-tab ${activeTab === "profile" ? "active" : ""}`}
               onClick={() => setActiveTab("profile")}
             >
               👤 Hồ sơ
             </button>
             <div className="notification-wrapper">
-              <NotificationSystem 
-                userRole="student" 
-                classes={joinedClasses} 
-                currentUser={studentInfo} 
+              <NotificationSystem
+                userRole="student"
+                classes={joinedClasses}
+                currentUser={studentInfo}
               />
             </div>
             <button className="btn-logout" onClick={handleLogout}>
@@ -259,7 +292,7 @@ const Student = () => {
       {/* Tab: Quản lý lớp học */}
       <div className={`content ${activeTab === "classes" ? "active" : ""}`}>
         <h2>📚 Quản lý lớp học</h2>
-        
+
         {/* Join Class Section */}
         <div className="join-class-section">
           <h3>🔗 Tham gia lớp học mới</h3>
@@ -271,7 +304,7 @@ const Student = () => {
               onChange={(e) => setClassCode(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearchClass()}
             />
-            <button 
+            <button
               className="btn-primary"
               onClick={handleSearchClass}
               disabled={!classCode.trim()}
@@ -290,14 +323,14 @@ const Student = () => {
                   <p>👥 Số học sinh: {searchResult.students?.length || 0}</p>
                 </div>
                 <div className="result-actions">
-                  <button 
+                  <button
                     className="btn-primary"
                     onClick={handleJoinClass}
                     disabled={isJoining}
                   >
                     {isJoining ? '⏳ Đang xử lý...' : '✅ Tham gia'}
                   </button>
-                  <button 
+                  <button
                     className="btn-secondary"
                     onClick={() => { setSearchResult(null); setClassCode(''); }}
                   >
@@ -332,7 +365,7 @@ const Student = () => {
                     <p>📝 {classItem.numberOfPendingAssignments?.length || 0} bài tập</p>
                   </div>
                   <div className="class-card-footer">
-                    <button 
+                    <button
                       className="btn-primary"
                       onClick={() => handleViewClass(classItem.id)}
                     >
@@ -385,13 +418,13 @@ const Student = () => {
         </div>
 
         <div className="class-tabs">
-          <button 
+          <button
             className={activeClassTab === "info" ? "active" : ""}
             onClick={() => setActiveClassTab("info")}
           >
             ℹ️ Thông tin
           </button>
-          <button 
+          <button
             className={activeClassTab === "assignments" ? "active" : ""}
             onClick={() => setActiveClassTab("assignments")}
           >
@@ -403,19 +436,19 @@ const Student = () => {
           {/*>*/}
           {/*  📚 Tài liệu*/}
           {/*</button>*/}
-          <button 
+          <button
             className={activeClassTab === "announcements" ? "active" : ""}
             onClick={() => setActiveClassTab("announcements")}
           >
             📢 Thông báo
           </button>
-          <button 
+          <button
             className={activeClassTab === "grades" ? "active" : ""}
             onClick={() => setActiveClassTab("grades")}
           >
             📊 Điểm số
           </button>
-          <button 
+          <button
             className={activeClassTab === "members" ? "active" : ""}
             onClick={() => setActiveClassTab("members")}
           >
@@ -600,51 +633,82 @@ const Student = () => {
           </div>
         )}
 
-        {/* Tab: Thành viên */}
+        {/* Tab: Thành viên - ĐÃ CẬP NHẬT */}
         {activeClassTab === "members" && (
-          <div className="members-section">
-            <div className="members-card">
-              <h3>👥 Danh sách thành viên</h3>
-              
-              {/* Giáo viên */}
-              <div className="member-group">
-                <h4>👨‍🏫 Giáo viên</h4>
-                <div className="member-item teacher">
-                  <div className="member-avatar">👨‍🏫</div>
-                  <div className="member-info">
-                    <span className="member-name">{selectedClass?.teacherName}</span>
-                    <span className="member-role">Giáo viên phụ trách</span>
+            <div className="members-section">
+              <div className="members-card">
+                <h3>👥 Danh sách thành viên</h3>
+
+                {/* Giáo viên - Lấy từ selectedClass (vì API members có thể chỉ trả về students) */}
+                <div className="member-group">
+                  <h4>👨‍🏫 Giáo viên</h4>
+                  <div className="member-item teacher">
+                    <div
+                        className="member-avatar"
+                        style={{ backgroundColor: '#2c3e50', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: '40px', height: '40px' }}
+                    >
+                      👨‍🏫
+                    </div>
+                    <div className="member-info">
+                      <span className="member-name">{selectedClass?.teacherName || 'Giáo viên'}</span>
+                      <span className="member-role">Giáo viên phụ trách</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Học sinh */}
-              <div className="member-group">
-                <h4>👨‍🎓 Học sinh ({selectedClass?.students?.length || 0})</h4>
-                {selectedClass?.students?.length === 0 ? (
-                  <p className="no-members">Chưa có học sinh nào trong lớp</p>
-                ) : (
-                  <div className="members-list">
-                    {selectedClass?.students?.map((student, index) => (
-                      <div key={student.id} className="member-item">
-                        <div className="member-avatar">{student.name?.charAt(0) || '?'}</div>
-                        <div className="member-info">
-                          <span className="member-name">{student.name}</span>
-                          <span className="member-email">{student.email || 'Chưa có email'}</span>
-                        </div>
-                        {student.id === studentInfo.id && (
-                          <span className="member-badge">Bạn</span>
-                        )}
+                {/* Học sinh - Lấy từ state classMembers */}
+                <div className="member-group">
+                  <h4>👨‍🎓 Học sinh ({classMembers.length})</h4>
+                  {isLoading ? (
+                      <div className="loading-state">⏳ Đang tải danh sách thành viên...</div>
+                  ) : classMembers.length === 0 ? (
+                      <p className="no-members">Chưa có học sinh nào khác trong lớp</p>
+                  ) : (
+                      <div className="members-list">
+                        {classMembers.map((member) => (
+                            <div key={member.id} className="member-item">
+                              <div
+                                  className="member-avatar"
+                                  style={{
+                                    backgroundColor: getAvatarColor(member.name),
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    width: '40px',
+                                    height: '40px',
+                                    fontWeight: 'bold'
+                                  }}
+                              >
+                                {member.name ? member.name.charAt(0).toUpperCase() : '?'}
+                              </div>
+                              <div className="member-info">
+                                <span className="member-name">{member.name || 'Người dùng ẩn danh'}</span>
+                                <span className="member-email">{member.email || 'Chưa có email'}</span>
+                              </div>
+                              {/* Kiểm tra nếu đây là user đang đăng nhập */}
+                              {member.email === studentInfo.email && (
+                                  <span className="member-badge" style={{
+                                    backgroundColor: '#e3f2fd',
+                                    color: '#1976d2',
+                                    padding: '2px 8px',
+                                    borderRadius: '10px',
+                                    fontSize: '0.75rem',
+                                    border: '1px solid #bbdefb'
+                                  }}>
+                            Bạn
+                          </span>
+                              )}
+                            </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
         )}
       </div>
-
     </div>
   );
 };

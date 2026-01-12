@@ -37,7 +37,7 @@ const ClassContent = ({
   onSaveMaterial,
   onDeleteMaterial,
   onDownloadMaterial,
-  onCancelMaterial
+  onCancelMaterial, students
 }) => {
   const renderContent = () => {
     // Nếu đang tạo bài tập mới, hiển thị form
@@ -97,10 +97,10 @@ const ClassContent = ({
 
       case 'student-list':
         return (
-          <StudentList
-            students={selectedClass.students}
-            onRemove={onRemoveStudent}
-          />
+            <StudentList
+                students={students}
+                onRemove={onRemoveStudent}
+            />
         );
 
       case 'announcement-list':
