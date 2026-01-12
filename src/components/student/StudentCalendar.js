@@ -95,7 +95,6 @@ function StudentCalendar({ joinedClasses = [] }) {
   };
 
   const handleDoAssignment = (assignment) => {
-    // Điều hướng đến trang chi tiết bài tập để nộp bài
     navigate(`/assignment/${assignment.id}`);
   };
 

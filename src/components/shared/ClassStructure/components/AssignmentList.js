@@ -2,7 +2,6 @@ import React from 'react';
 import { Button } from '../../../ui/index.js';
 import { formatDate, getDaysUntilDeadline, isOverdue } from '../../../../utils/dateHelpers.js';
 
-// Thêm prop onStart (dành cho học sinh)
 const AssignmentList = ({ assignments = [], onDelete, onExtend, onStart }) => {
     if (!assignments || assignments.length === 0) {
     return (

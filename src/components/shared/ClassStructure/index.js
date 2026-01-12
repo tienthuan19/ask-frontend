@@ -47,7 +47,6 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     }
   }, [selectedClass]);
 
-  // Gọi fetch khi component mount (kết hợp với fetchAnnouncements cũ)
   useEffect(() => {
     fetchAnnouncements();
     fetchAssignments(); // <--- Gọi thêm hàm này
@@ -62,12 +61,11 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     questions: []
   });
   const [currentQuestion, setCurrentQuestion] = useState({
-    content: '',      // Backend cần content
-    score: 10,        // Backend cần score
-    modelAnswer: ''   // Backend cần modelAnswer
+    content: '',
+    score: 10,
+    modelAnswer: ''
   });
 
-  // Toggle folder expansion
   const toggleFolder = (folderId) => {
     setExpandedFolders(prev => 
       prev.includes(folderId) 
@@ -76,10 +74,8 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     );
   };
 
-  // Navigate to content
   const navigate = (content) => {
     setActiveContent(content);
-    // Nếu navigate đến create-assignment thì set flag
     if (content === 'create-assignment') {
       setShowCreateAssignment(true);
       setShowCreateAnnouncement(false);
@@ -99,17 +95,14 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     }
   };
 
-  // Update assignment field
   const updateAssignmentField = (field, value) => {
     setAssignmentFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Update question
   const updateQuestion = (field, value) => {
     setCurrentQuestion(prev => ({ ...prev, [field]: value }));
   };
 
-  // Add question
   const addQuestion = () => {
     if (currentQuestion.content && currentQuestion.content.trim()) {
       setAssignmentFormData(prev => ({
@@ -122,7 +115,6 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     }
   };
 
-  // Remove question
   const removeQuestion = (questionId) => {
     setAssignmentFormData(prev => ({
       ...prev,
@@ -130,59 +122,52 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     }));
   };
 
-  // Reset form
   const resetAssignmentForm = () => {
     setAssignmentFormData({
       title: '',
       description: '',
-      dueDate: '',   // Lưu ý dùng dueDate cho khớp logic form
-      duration: '', // Form đang dùng timeLimit, API map sang duration
+      dueDate: '',
+      duration: '',
       maxScore: 100,
       questions: []
     });
-    // Reset về đúng key
+
     setCurrentQuestion({ content: '', score: 10, modelAnswer: '' });
   };
 
-  // Navigation handlers
   const handleNavigate = useCallback((content) => {
     navigate(content);
   }, []);
 
-  // Assignment handlers
+
   const handleCreateAssignment = useCallback(async (formData) => {
     try {
-      // MAPPING DỮ LIỆU: Frontend Form -> Backend Request DTO
-      // Backend Request: title, description, dueDate, duration, maxScore, questions
-
       const payload = {
         title: formData.title,
         description: formData.description,
-        // Backend cần LocalDateTime (ISO format). Frontend datetime-local trả về 'YYYY-MM-DDTHH:mm'
-        // Ta cần đảm bảo nó đúng chuẩn ISO 8601
+
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
         duration: parseInt(formData.duration), // Backend: Integer duration
         maxScore: parseInt(formData.maxScore),  // Backend: Integer maxScore
 
-        // Map danh sách câu hỏi
+
         questions: formData.questions.map(q => ({
-          content: q.content,         // Đã khớp
-          modelAnswer: q.modelAnswer, // Đã khớp
-          score: parseInt(q.score)// Frontend: points -> Backend: score
-          // Lưu ý: Backend QuestionRequest hiện tại KHÔNG có trường 'type' (Trắc nghiệm/Tự luận)
-          // Nếu cần, bạn phải update Backend thêm field 'type' vào QuestionRequest.java
+          content: q.content,
+          modelAnswer: q.modelAnswer,
+          score: parseInt(q.score)
+
         }))
       };
 
-      console.log("Sending Assignment Payload:", payload); // Debug xem dữ liệu đúng chưa
+      console.log("Sending Assignment Payload:", payload);
 
-      // Gọi API
+
       await createClassAssignmentAPI(selectedClass.id, payload);
 
-      // Refresh lại danh sách
+
       await fetchAssignments();
 
-      // Reset UI
+
       setShowCreateAssignment(false);
       resetAssignmentForm();
       setActiveContent('assignment-list');
@@ -237,18 +222,18 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
   // Announcement handlers
   const handleSaveAnnouncement = useCallback(async (announcement) => {
     try {
-      // Chuẩn bị dữ liệu gửi lên server
+
       const payload = {
         title: announcement.title,
         content: announcement.content,
         priority: announcement.priority,
-        sendEmail: announcement.sendEmail // Mặc định là false nếu không có
+        sendEmail: announcement.sendEmail
       };
 
-      // Gọi API tạo mới
+
       await createClassAnnouncementAPI(selectedClass.id, payload);
 
-      // Load lại danh sách sau khi tạo thành công
+
       await fetchAnnouncements();
 
       setShowCreateAnnouncement(false);
@@ -276,7 +261,7 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     setActiveContent('welcome');
   }, []);
 
-  // Material handlers
+
   const handleSaveMaterial = useCallback((newMaterials) => {
     setMaterials(prev => [...newMaterials, ...prev]);
     setShowUploadMaterial(false);
@@ -326,8 +311,6 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     if (selectedClass && selectedClass.id) {
       try {
         const data = await getClassMembersAPI(selectedClass.id);
-        // Lọc danh sách: Chỉ lấy role là STUDENT để hiển thị trong tab Học sinh
-        // Nếu muốn hiển thị cả giáo viên thì bỏ filter
         const studentList = Array.isArray(data)
             ? data.filter(member => member.role === 'STUDENT')
             : [];
@@ -338,17 +321,16 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     }
   }, [selectedClass]);
 
-  // Cập nhật useEffect tổng để gọi hàm mới
   useEffect(() => {
     fetchAnnouncements();
     fetchAssignments();
-    fetchClassMembers(); // <--- Gọi hàm fetch thành viên
+    fetchClassMembers();
   }, [fetchAnnouncements, fetchAssignments, fetchClassMembers]);
 
   const handleRemoveStudent = useCallback((studentId) => {
     // TODO: Gọi API xóa học sinh (nếu cần backend hỗ trợ)
     if (window.confirm('Bạn có chắc chắn muốn xóa học sinh này khỏi lớp?')) {
-      // Tạm thời update state UI
+
       setStudents(prev => prev.filter(s => s.id !== studentId));
     }
   }, []);

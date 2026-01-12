@@ -10,10 +10,8 @@ import "../../styles/pages/teacher.css";
 const Teacher = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
-  // Profile editing state removed - ProfileComponent handles this
-  const [classes, setClasses] = useState([]); // Shared state cho dashboard
+  const [classes, setClasses] = useState([]);
 
-  // Thông tin giáo viên (state)
   const [teacherInfo, setTeacherInfo] = useState({
     name: localStorage.getItem('userName') || "Trần Văn B",
     teacherId: "GV98765",
@@ -27,22 +25,17 @@ const Teacher = () => {
     avatar: "https://via.placeholder.com/100"
   });
 
-  // Xử lý đăng xuất
   const handleLogout = () => {
-    // Xóa tất cả dữ liệu người dùng
     localStorage.removeItem('userLoggedIn');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('teacherId');
     
-    // Log để debug
     console.log('Đăng xuất thành công, chuyển về trang chủ');
     
-    // Chuyển về trang chủ và reload
     navigate("/", { replace: true });
     
-    // Force reload trang để đảm bảo state được reset
     setTimeout(() => {
       window.location.reload();
     }, 100);

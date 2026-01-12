@@ -6,10 +6,9 @@ const NotificationList = ({
                             onMarkRead,
                             onMarkAllRead,
                             onDelete,
-                            getTypeIcon // Prop này có thể được truyền từ cha, hoặc dùng fallback bên dưới
+                            getTypeIcon
                           }) => {
 
-  // Hàm format thời gian (giữ nguyên logic của bạn)
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
@@ -22,25 +21,21 @@ const NotificationList = ({
     return date.toLocaleDateString('vi-VN');
   };
 
-  // Hàm render Icon dựa trên Type (Map với các Enum của Backend)
   const renderIcon = (type) => {
-    // Nếu component cha truyền hàm getTypeIcon thì ưu tiên dùng
     if (getTypeIcon) return getTypeIcon(type);
-
-    // Logic fallback mặc định khớp với Backend
     switch (type) {
       case 'ASSIGNMENT':
-        return '📝'; // Bài tập
+        return '📝';
       case 'SUBMISSION':
-        return '📤'; // Nộp bài
+        return '📤';
       case 'GRADE':
-        return '🏅'; // Điểm số
+        return '🏅';
       case 'ANNOUNCEMENT':
-        return '📢'; // Thông báo chung (Backend của bạn đang trả về loại này)
+        return '📢';
       case 'SYSTEM':
-        return '⚙️'; // Hệ thống
+        return '⚙️';
       default:
-        return '📌'; // Mặc định
+        return '📌';
     }
   };
 
@@ -78,13 +73,13 @@ const NotificationList = ({
                       <p className="notification-message">{notification.message}</p>
                       <span className="notification-time">{formatTime(notification.timestamp)}</span>
                     </div>
-                    <button
-                        className="delete-notification"
-                        onClick={(e) => { e.stopPropagation(); onDelete(notification.id); }}
-                        title="Xóa thông báo"
-                    >
-                      ✕
-                    </button>
+                    {/*<button*/}
+                    {/*    className="delete-notification"*/}
+                    {/*    onClick={(e) => { e.stopPropagation(); onDelete(notification.id); }}*/}
+                    {/*    title="Xóa thông báo"*/}
+                    {/*>*/}
+                    {/*  ✕*/}
+                    {/*</button>*/}
                   </div>
               ))
           )}

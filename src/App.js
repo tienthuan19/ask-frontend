@@ -34,16 +34,12 @@ function App() {
           <Route path="/grading" element={<GradingPage />} />
           <Route path="/login" element={<Login />} />
 
-          {/* [THÊM DÒNG NÀY] Để khớp với đường dẫn Backend redirect tới */}
           <Route path="/register-role" element={<RoleSelector />} />
 
-          {/* Đường dẫn cũ (giữ lại nếu cần) */}
           <Route path="/role-selector" element={<RoleSelector />} />
 
-          {/* [NEW] Route nhận token đăng nhập thành công */}
           <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
           
-          {/* Protected routes - Student */}
           <Route path="/student-dashboard" element={
             <ProtectedRoute requiredRole="student">
               <Student />
@@ -55,14 +51,12 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Protected routes - Teacher */}
           <Route path="/teacher-dashboard" element={
             <ProtectedRoute requiredRole="teacher">
               <Teacher />
             </ProtectedRoute>
           } />
           
-          {/* Multi-Accounting Dashboard - Protected (teacher/admin) */}
           <Route path="/multi-accounting-dashboard" element={
             <MultiAccountingDashboard />
           } />

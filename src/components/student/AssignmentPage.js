@@ -120,7 +120,6 @@ const AssignmentPage = () => {
         const data = await getAssignmentDetailAPI(assignmentId);
         setAssignment(data);
 
-        // Thiết lập timer: Backend trả về 'duration' (phút) -> đổi ra giây
         if (data.duration && data.duration > 0) {
           setTimeRemaining(data.duration * 60);
         }
@@ -135,7 +134,6 @@ const AssignmentPage = () => {
     fetchAssignmentData();
   }, [assignmentId]);
 
-  // 2. Timer Logic (Countdown)
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0 || isSubmitted) return;
 
@@ -143,7 +141,7 @@ const AssignmentPage = () => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleAutoSubmit(); // Hết giờ tự nộp
+          handleAutoSubmit();
           return 0;
         }
         return prev - 1;
@@ -156,12 +154,12 @@ const AssignmentPage = () => {
   const handleAnswerChange = (questionId, value) => {
     setAnswersMap(prev => ({
       ...prev,
-      [questionId]: value // Cập nhật câu trả lời cho câu hỏi tương ứng
+      [questionId]: value
     }));
   };
 
   const handleSubmit = async () => {
-    // Validate: Ít nhất phải trả lời 1 câu (hoặc tùy logic của bạn)
+
     const hasAnswer = Object.values(answersMap).some(ans => ans && ans.trim().length > 0);
 
     if (!hasAnswer) {
@@ -177,22 +175,18 @@ const AssignmentPage = () => {
     setIsSubmitting(true);
 
     try {
-      // --- XÂY DỰNG PAYLOAD JSON ---
-      // Duyệt qua danh sách câu hỏi gốc để đảm bảo thứ tự và đủ câu
+
       const answersPayload = assignment.questions.map(q => ({
         questionId: q.id,
-        // Lấy nội dung từ state, nếu chưa nhập thì gửi chuỗi rỗng
+
         studentAnswer: answersMap[q.id] || ""
-        // Lưu ý: Backend SubmissionRequest dùng field 'studentAnswer' (trong code Java bạn gửi)
-        // Nếu Backend bạn đổi thành 'content' như comment ví dụ của bạn, hãy sửa dòng trên thành:
-        // content: answersMap[q.id] || ""
+
       }));
 
       const payload = {
         answers: answersPayload
       };
 
-      // Gọi API gửi JSON
       await submitAssignmentAPI(assignmentId, payload);
 
       setIsSubmitted(true);

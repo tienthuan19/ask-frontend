@@ -7,9 +7,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 
   useEffect(() => {
     const checkAuth = () => {
-      // 1. Kiểm tra trạng thái đăng nhập
-      // Lưu ý: Cần đảm bảo Login.js đã setItem 'userLoggedIn'
-      // Nếu bạn dùng check token thì logic sẽ khác (check localStorage.getItem('token'))
+
       const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true' || !!localStorage.getItem('token');
 
       if (!isLoggedIn) {
@@ -18,7 +16,6 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         return;
       }
 
-      // 2. Lấy role và chuẩn hóa về chữ thường để so sánh không phân biệt hoa thường
       const rawRole = localStorage.getItem('userRole');
 
       if (!rawRole) {
@@ -30,27 +27,23 @@ const ProtectedRoute = ({ children, requiredRole }) => {
       const savedRole = rawRole.toLowerCase(); // Chuẩn hóa: "STUDENT" -> "student"
       const targetRole = requiredRole ? requiredRole.toLowerCase() : null;
 
-      // Admin có quyền truy cập tất cả
       if (savedRole === 'admin') {
         setIsChecking(false);
         return;
       }
 
-      // 3. So sánh role
       if (targetRole && savedRole !== targetRole) {
         console.log(`Role không khớp (Got: ${savedRole}, Expected: ${targetRole}), chuyển về role selector`);
         navigate('/role-selector', { replace: true });
         return;
       }
 
-      // Khớp role hoặc không yêu cầu role cụ thể
       setIsChecking(false);
     };
 
     checkAuth();
   }, [navigate, requiredRole]);
 
-  // Lắng nghe thay đổi localStorage (đăng xuất ở tab khác)
   useEffect(() => {
     const handleStorageChange = () => {
       const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true' || !!localStorage.getItem('token');
@@ -65,12 +58,9 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     };
   }, [navigate]);
 
-  // Render UI
-  // Logic hiển thị tương tự useEffect để tránh flash content
   const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true' || !!localStorage.getItem('token');
 
   if (isChecking || !isLoggedIn) {
-    // Có thể thay bằng Loading Spinner đẹp hơn
     return <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>Đang kiểm tra quyền truy cập...</div>;
   }
 

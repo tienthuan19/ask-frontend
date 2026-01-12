@@ -42,24 +42,18 @@ const Student = () => {
     email: localStorage.getItem('userEmail') || "student@email.com",
     avatar: "https://via.placeholder.com/100"
   });
-
-  // --- Data Loading Logic ---
   const loadStudentClasses = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getStudentClassesAPI();
 
       if (response && response.data) {
-        // Map dữ liệu từ Backend sang format của UI
         const mappedClasses = response.data.map(cls => ({
           ...cls,
           code: cls.classCode || cls.code,
-          // Backend chưa trả về teacherName trong CardResponse, tạm thời để placeholder hoặc map nếu có
           teacherName: cls.teacherName || "Giáo viên",
-          // Tạo mảng giả để UI không bị lỗi khi check .length
           students: new Array(cls.numberOfStudents || 0).fill(null),
           numberOfPendingAssignments: new Array(cls.numberOfPendingAssignments || 0).fill(null),
-          // Giữ lại số liệu gốc
           numberOfStudents: cls.numberOfStudents || 0,
         }));
         setJoinedClasses(mappedClasses);
@@ -138,7 +132,7 @@ const Student = () => {
 
   const loadClassAssignments = async (classId) => {
     try {
-      setIsLoading(true); // Nên thêm loading state
+      setIsLoading(true);
 
       const data = await getStudentPendingAssignmentsAPI(classId);
 
@@ -159,11 +153,9 @@ const Student = () => {
   const loadClassAnnouncements = async (classId) => {
     try {
       setIsLoading(true);
-      // Gọi API: /api/lms-backend/v1/classrooms/{classroomId}/announcements
       const data = await getClassAnnouncementsAPI(classId);
 
       if (Array.isArray(data)) {
-        // Sắp xếp thông báo mới nhất lên đầu (dựa vào createdAt)
         const sortedData = data.sort((a, b) =>
             new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -184,12 +176,10 @@ const Student = () => {
       return;
     }
 
-    // Lưu ý: Backend hiện tại chưa có API "Preview" lớp học bằng code (Public Search).
-    // Ta sẽ giả lập bước này để hiển thị UI xác nhận trước khi gọi API Join thực sự.
     setSearchResult({
       id: "preview_mode",
       name: `Lớp có mã: ${classCode}`,
-      teacherName: "---", // Không lấy được info nếu chưa join
+      teacherName: "---",
       subject: "Nhấn tham gia để xem chi tiết",
       students: [],
       code: classCode
@@ -200,12 +190,11 @@ const Student = () => {
     if (!classCode) return;
     setIsJoining(true);
     try {
-      // Gọi API join
       const response = await joinClassAPI(classCode.trim());
 
       if (response && response.status === 200) {
         alert(`Tham gia lớp học thành công!`);
-        await loadStudentClasses(); // Reload danh sách
+        await loadStudentClasses();
         setClassCode('');
         setSearchResult(null);
       }
@@ -222,8 +211,7 @@ const Student = () => {
     localStorage.clear();
     navigate("/", { replace: true });
   };
-  // --- Helpers ---
-  // Helper render mức độ ưu tiên (BẠN ĐANG THIẾU HÀM NÀY)
+
   const renderPriorityBadge = (priority) => {
     const p = priority ? priority.toLowerCase() : 'normal';
     const styles = {
@@ -428,7 +416,6 @@ const Student = () => {
         <StudentTest />
       </div>
 
-      {/* Tab: Lịch học */}
       {/* Tab: Lịch học */}
       <div className={`content ${activeTab === "calendar" ? "active" : ""}`}>
         {/* Truyền state joinedClasses vào đây */}

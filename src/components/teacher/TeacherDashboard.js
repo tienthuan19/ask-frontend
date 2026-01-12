@@ -24,11 +24,8 @@ function TeacherDashboard() {
       try {
         setLoading(true);
 
-        // 1. Gọi API lấy thống kê tổng quan (Backend đã trả về đủ 5 trường)
         const basicStats = await getDashboardStatsAPI();
 
-        // --- CẬP NHẬT STATE TỪ API ---
-        // Lưu ý: Dùng trực tiếp basicStats, không cần tính toán thủ công nữa
         if (basicStats) {
           setStats({
             totalClassrooms: basicStats.totalClassrooms || 0,
@@ -39,17 +36,15 @@ function TeacherDashboard() {
           });
         }
 
-        // 2. Gọi API lấy danh sách lớp (để hiển thị list bên dưới)
         const classes = await getTeacherClassesAPI();
 
-        // 3. Lấy số lượng bài tập riêng cho từng lớp (để hiển thị chi tiết)
         const classesWithData = await Promise.all(classes.map(async (cls) => {
           try {
             const assignments = await getClassAssignmentsAPI(cls.id);
             return {
               ...cls,
               assignmentCount: assignments ? assignments.length : 0,
-              avgScore: 0 // Backend API chi tiết lớp chưa có avgScore, tạm để 0
+              avgScore: 0
             };
           } catch (err) {
             console.error(`Lỗi lấy bài tập lớp ${cls.name}`, err);

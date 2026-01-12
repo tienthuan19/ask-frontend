@@ -34,28 +34,26 @@ export const checkDeadlines = (classes) => {
   if (!classes || !Array.isArray(classes)) return notifications;
 
   classes.forEach(classItem => {
-    // Kiểm tra classItem và mảng assignments
     if (classItem && classItem.assignments && Array.isArray(classItem.assignments)) {
       classItem.assignments.forEach(assignment => {
-        // --- KHẮC PHỤC LỖI Ở ĐÂY ---
-        // Bỏ qua nếu assignment bị null
+
         if (!assignment) return;
 
-        // Lấy ngày hết hạn (ưu tiên dueDate từ API, fallback sang deadline cũ)
+
         const dateStr = assignment.dueDate || assignment.deadline;
 
-        // Bỏ qua nếu không có ngày hết hạn
+
         if (!dateStr) return;
 
         const deadline = new Date(dateStr);
 
-        // Bỏ qua nếu ngày không hợp lệ
+
         if (isNaN(deadline.getTime())) return;
 
         const timeDiff = deadline - now;
         const hoursLeft = timeDiff / (1000 * 60 * 60);
 
-        // Thông báo nếu còn dưới 24 giờ
+
         if (hoursLeft > 0 && hoursLeft <= 24) {
           notifications.push({
             id: `deadline-${assignment.id}`,

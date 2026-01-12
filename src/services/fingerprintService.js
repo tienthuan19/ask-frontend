@@ -2,16 +2,11 @@
 //tối đa cho phép từ 1 device
 const MAX_ACCOUNTS_PER_DEVICE = 1000;
 
-/**
- * Phát hiện Multi-accounting với tính năng block
- * Kiểm tra xem device fingerprint có bị sử dụng bởi nhiều tài khoản không
- */
 export const checkMultiAccounting = async (visitorId, userId) => {
   try {
     const fingerprintData = JSON.parse(localStorage.getItem('fingerprintData') || '{}');
     const blockedDevices = JSON.parse(localStorage.getItem('blockedDevices') || '[]');
     
-    // Kiểm tra xem device có bị block không
     if (blockedDevices.includes(visitorId)) {
       return {
         isBlocked: true,
@@ -21,7 +16,6 @@ export const checkMultiAccounting = async (visitorId, userId) => {
       };
     }
     
-    // Lấy danh sách userId đã đăng nhập từ device này
     if (!fingerprintData[visitorId]) {
       fingerprintData[visitorId] = {
         userIds: [userId],
@@ -33,11 +27,8 @@ export const checkMultiAccounting = async (visitorId, userId) => {
     } else {
       const existingData = fingerprintData[visitorId];
       
-      // Kiểm tra nếu userId mới khác với các userId đã lưu
       if (!existingData.userIds.includes(userId)) {
-        // Kiểm tra số lượng tài khoản đã vượt quá giới hạn chưa
         if (existingData.userIds.length >= MAX_ACCOUNTS_PER_DEVICE) {
-          // BLOCK DEVICE
           blockedDevices.push(visitorId);
           localStorage.setItem('blockedDevices', JSON.stringify(blockedDevices));
           existingData.isBlocked = true;
@@ -63,7 +54,6 @@ export const checkMultiAccounting = async (visitorId, userId) => {
         
         existingData.userIds.push(userId);
         
-        // CẢNH BÁO: Phát hiện multi-accounting
         if (existingData.userIds.length > 1) {
           console.warn('⚠️ MULTI-ACCOUNTING DETECTED!', {
             visitorId,
@@ -134,14 +124,12 @@ export const unblockDevice = (visitorId) => {
     const blockedDevices = JSON.parse(localStorage.getItem('blockedDevices') || '[]');
     const fingerprintData = JSON.parse(localStorage.getItem('fingerprintData') || '{}');
     
-    // Xóa khỏi danh sách blocked
     const index = blockedDevices.indexOf(visitorId);
     if (index > -1) {
       blockedDevices.splice(index, 1);
       localStorage.setItem('blockedDevices', JSON.stringify(blockedDevices));
     }
     
-    // Cập nhật fingerprint data
     if (fingerprintData[visitorId]) {
       fingerprintData[visitorId].isBlocked = false;
       fingerprintData[visitorId].unblockedAt = new Date().toISOString();

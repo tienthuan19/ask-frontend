@@ -14,16 +14,12 @@ const RoleSelector = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Lấy dữ liệu đăng ký thường
   const registerData = location.state?.registerData;
-  // [4] Lấy tempToken từ URL
   const tempToken = searchParams.get('tempToken');
 
   useEffect(() => {
-    // [5] QUAN TRỌNG: Nếu có tempToken (User từ Google) -> Dừng, không redirect về login
     if (tempToken) return;
 
-    // Nếu có registerData (User đăng ký thường) -> Dừng
     if (registerData) return;
 
     const isLoggedIn = localStorage.getItem('userLoggedIn') === 'true';
@@ -49,17 +45,15 @@ const RoleSelector = () => {
         }
       }
     }
-  }, [navigate, registerData, tempToken]); // Thêm tempToken vào dependency
+  }, [navigate, registerData, tempToken]);
 
   const handleRoleSelect = async (role) => {
-    // [6] Xử lý khi chọn role cho user Google
     if (tempToken) {
       setIsProcessing(true);
       try {
-        // Gọi API đăng ký OAuth2 (bạn cần thêm hàm này vào authService.js nếu chưa có)
+
         const response = await oauth2RegisterAPI(tempToken, role);
 
-        // Lưu thông tin đăng nhập trả về từ server
         const { token, user } = response.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -80,7 +74,6 @@ const RoleSelector = () => {
       return;
     }
 
-    // ... (Giữ nguyên logic cũ cho registerData và user thường) ...
     if (registerData) {
       setIsProcessing(true);
       try {
@@ -105,7 +98,6 @@ const RoleSelector = () => {
     }
   };
 
-  // Hiển thị loading nếu đang redirect
   if (isRedirecting) {
     return (
       <div style={{
@@ -145,13 +137,10 @@ const RoleSelector = () => {
   const userId = localStorage.getItem('userId');
   const isAdmin = userId === 'admin@gradingai.com' || userId === 'admin@grading.com';
 
-  // [7] Sửa điều kiện chặn hiển thị: Cho phép hiển thị nếu có tempToken hoặc registerData
   if (!isLoggedIn && !tempToken && !registerData) {
     return null;
   }
 
-  // ... (Phần còn lại giữ nguyên) ...
-  // Lưu ý: Biến userName có thể null khi dùng tempToken, nên fallback:
   const userName = localStorage.getItem('userName') || (registerData ? registerData.fullName : 'bạn mới');
 
   return (

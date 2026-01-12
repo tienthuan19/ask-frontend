@@ -136,7 +136,7 @@ const SocialLogin = () => (
 // Main Login Component
 const Login = () => {
     const navigate = useNavigate();
-    // const { visitorId, visitorData, isLoading: fpLoading } = useFingerprint(); // Uncomment khi dùng thật
+    // const { visitorId, visitorData, isLoading: fpLoading } = useFingerprint();
     const visitorId = "test-visitor-id"; // Dòng này để test, xóa khi dùng hook thật
     const fpLoading = false;
 

@@ -23,16 +23,14 @@ const CreateAssignment = ({
       try {
         const payload = {
           ...formData,
-          // If formData still uses 'deadline', map it to 'dueDate'
           dueDate: formData.dueDate,
-          // If formData uses 'timeLimit', map it to 'duration'
           duration: formData.duration
         };
-        await onCreate(payload); // Chờ hàm cha xử lý API
+        await onCreate(payload);
       } catch (err) {
         console.error(err);
       } finally {
-        setIsSubmitting(false); // Mở khóa (nếu form chưa đóng)
+        setIsSubmitting(false);
       }
     } else {
       alert('Vui lòng nhập tiêu đề và thêm ít nhất 1 câu hỏi!');

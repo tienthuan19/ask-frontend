@@ -62,28 +62,23 @@ const CreateAnnouncement = ({ onSave, onCancel, editData = null }) => {
   const handleSubmit = async () => {
     if (validate()) {
       setIsSubmitting(true); // <--- MỚI
-      // Chuẩn bị dữ liệu gửi đi
       const announcementData = {
         title: formData.title,
         content: formData.content,
         priority: formData.priority,
         sendEmail: formData.sendEmail,
-        // --------------------
         attachments: formData.attachments
       };
 
       try {
-        // Chờ hàm onSave (gọi API bên index.js) chạy xong
         if (onSave) {
-          await onSave(announcementData); // <--- THÊM AWAIT
+          await onSave(announcementData);
         }
       } catch (error) {
         console.error(error);
       } finally {
-        // Dù thành công hay thất bại (nếu component chưa unmount) thì mở khóa nút
-        // Lưu ý: Nếu thành công, component này thường sẽ bị đóng lại bởi parent,
-        // nên dòng này chủ yếu phục vụ trường hợp API lỗi để user ấn lại.
-        setIsSubmitting(false); // <--- MỚI
+
+        setIsSubmitting(false);
       }
     }
   };

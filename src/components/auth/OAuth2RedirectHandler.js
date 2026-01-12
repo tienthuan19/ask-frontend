@@ -11,35 +11,28 @@ const OAuth2RedirectHandler = () => {
 
         if (token) {
             try {
-                // 1. Lưu token
+
                 localStorage.setItem('token', token);
 
-                // 2. Decode token để lấy thông tin user (nếu backend có nhét role vào claim)
-                // Nếu không cài thư viện jwt-decode, bạn có thể dùng hàm parse base64 thủ công
                 const decoded = jwtDecode(token);
 
-                // Giả sử token có cấu trúc standard hoặc backend custom claim 'scope' hoặc 'roles'
-                // Bạn cần kiểm tra log của decoded để map đúng key
                 console.log("Decoded Token:", decoded);
 
                 const userId = decoded.sub || decoded.email || '';
                 const roles = decoded.scope ? decoded.scope.split(' ') : (decoded.roles || ['STUDENT']);
                 const role = roles.length > 0 ? roles[0] : 'STUDENT';
 
-                // 3. Lưu thông tin user giả lập từ token (vì backend api oauth2 redirect chỉ trả về token)
                 localStorage.setItem('userId', userId);
                 localStorage.setItem('userRole', role);
                 localStorage.setItem('userLoggedIn', 'true');
 
-                // Lưu object user tối thiểu để app không bị lỗi
                 const userObj = {
                     id: userId,
-                    email: userId, // Token thường dùng email làm subject
+                    email: userId,
                     roles: roles
                 };
                 localStorage.setItem('user', JSON.stringify(userObj));
 
-                // 4. Redirect dựa trên Role
                 if (role.includes('ADMIN')) {
                     navigate('/multi-accounting-dashboard');
                 } else if (role.includes('TEACHER')) {

@@ -1,7 +1,6 @@
 // src/services/notificationService.js
 import axios from 'axios';
 
-// Đảm bảo URL này khớp với gateway hoặc backend của bạn
 const API_URL = 'http://localhost:8081/api/lms-backend/v1/notifications';
 // Helper để lấy token (giả sử bạn lưu token trong localStorage)
 const getAuthHeader = () => {

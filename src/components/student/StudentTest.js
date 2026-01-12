@@ -11,7 +11,6 @@ function StudentTest() {
   const [classAssignments, setClassAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. Load danh sách lớp
   useEffect(() => {
     const loadClasses = async () => {
       try {
@@ -24,7 +23,6 @@ function StudentTest() {
     loadClasses();
   }, []);
 
-  // 2. Load bài tập khi chọn lớp
   const handleSelectClass = async (classItem) => {
     setSelectedClass(classItem);
     try {
@@ -39,15 +37,11 @@ function StudentTest() {
     }
   };
 
-  // 3. Xử lý khi bấm Làm bài -> CHUYỂN TRANG
   const handleStartTest = (assignmentId) => {
-    // Điều hướng sang trang AssignmentPage với ID cụ thể
     navigate(`/assignment/${assignmentId}`);
   };
 
   // --- RENDER ---
-
-  // Màn hình 1: Chọn lớp
   if (!selectedClass) {
     return (
         <div className="student-test">
@@ -71,7 +65,6 @@ function StudentTest() {
     );
   }
 
-  // Màn hình 2: Danh sách bài tập của lớp
   return (
       <div className="student-test">
         <div className="test-header">

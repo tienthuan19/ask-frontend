@@ -29,33 +29,36 @@ const NotificationSystem = ({ userRole, classes }) => {
     }
   };
 
-  // --- LOGIC LẤY DỮ LIỆU TỪ API (Gộp chung thành 1 hàm) ---
   const fetchNotificationData = async () => {
     try {
-      console.log("Đang gọi API lấy thông báo..."); // Debug log
-
-      // 1. Gọi API lấy danh sách
       const response = await getMyNotificationsAPI();
 
-      // 2. Gọi API lấy số lượng chưa đọc
-      const countResponse = await getUnreadCountAPI();
+      console.log("🔥 API Response Raw:", response);
+      let notificationArray = [];
 
-      // Kiểm tra dữ liệu trả về từ API danh sách
-      // Cấu trúc mong đợi: { status: 200, message: "...", data: [...] }
-      const notificationList = response?.data || [];
 
-      if (Array.isArray(notificationList)) {
-        console.log("Dữ liệu nhận được:", notificationList); // Debug log: Xem dữ liệu thô
+      if (response && Array.isArray(response.data)) {
+        notificationArray = response.data;
+      }
 
-        const mappedNotifications = notificationList.map(n => ({
+      else if (response && response.data && Array.isArray(response.data.data)) {
+        notificationArray = response.data.data;
+      }
+
+      else if (Array.isArray(response)) {
+        notificationArray = response;
+      }
+
+      console.log("✅ Extracted Array:", notificationArray); // DEBUG: Phải là mảng []
+
+      if (Array.isArray(notificationArray)) {
+        const mappedNotifications = notificationArray.map(n => ({
           id: n.id,
           title: getTitleByType(n.type),
-          message: n.message || n.content, // Fallback nếu backend đổi tên trường
+          message: n.message || n.content,
           timestamp: n.createdAt,
 
-          // --- SỬA LỖI QUAN TRỌNG Ở ĐÂY ---
-          // JSON backend trả về "read", không phải "isRead"
-          read: n.read !== undefined ? n.read : n.isRead,
+          read: (n.read !== undefined) ? n.read : (n.isRead || false),
 
           type: n.type,
           priority: 'normal',
@@ -63,70 +66,52 @@ const NotificationSystem = ({ userRole, classes }) => {
         }));
 
         setNotifications(mappedNotifications);
-      } else {
-        console.warn("API trả về không phải là mảng:", response);
-      }
 
-      // Cập nhật số lượng chưa đọc
-      if (countResponse && countResponse.data !== undefined) {
-        setUnreadCount(countResponse.data);
-      } else {
-        // Fallback: tự đếm nếu API count lỗi
-        if (Array.isArray(notificationList)) {
-          const count = notificationList.filter(n => !n.read).length;
-          setUnreadCount(count);
-        }
+        const count = mappedNotifications.filter(n => !n.read).length;
+        setUnreadCount(count);
       }
 
     } catch (error) {
-      console.error("Lỗi khi tải thông báo:", error);
+      console.error("❌ Lỗi khi tải thông báo:", error);
     }
   };
 
-  // --- USE EFFECT: Gọi API khi component mount & Polling ---
   useEffect(() => {
-    fetchNotificationData(); // Gọi ngay lần đầu
+    fetchNotificationData();
 
-    // Polling mỗi 30 giây
     const intervalId = setInterval(fetchNotificationData, 30000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- HANDLER: Đánh dấu đã đọc ---
+
   const handleMarkAsRead = async (notificationId) => {
-    // 1. Cập nhật UI ngay lập tức (Optimistic UI)
+
     setNotifications(prev =>
-        prev.map(notif =>
-            notif.id === notificationId ? { ...notif, read: true } : notif
-        )
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
 
-    // 2. Gọi API ngầm
     try {
       await markNotificationReadAPI(notificationId);
     } catch (error) {
-      console.error("Lỗi API mark read:", error);
+      console.error("Lỗi mark read:", error);
     }
   };
 
   const handleMarkAllAsRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
+
     const unreadNotifs = notifications.filter(n => !n.read);
     try {
       await Promise.all(unreadNotifs.map(n => markNotificationReadAPI(n.id)));
-    } catch (error) {
-      console.error("Lỗi mark all read:", error);
-    }
+    } catch (error) { console.error("Lỗi mark all:", error); }
   };
 
   const handleDelete = (notificationId) => {
-    const notification = notifications.find(n => n.id === notificationId);
+    const notif = notifications.find(n => n.id === notificationId);
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    if (notification && !notification.read) {
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    }
+    if (notif && !notif.read) setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   return (
@@ -135,7 +120,7 @@ const NotificationSystem = ({ userRole, classes }) => {
             unreadCount={unreadCount}
             onClick={() => {
               setShowNotifications(!showNotifications);
-              // Refresh dữ liệu khi mở dropdown
+
               if (!showNotifications) fetchNotificationData();
             }}
         />
