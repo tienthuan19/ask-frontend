@@ -50,13 +50,13 @@ const AssignmentList = ({ assignments = [], onDelete, onExtend, onStart }) => {
               </div>
               
               <div className="assignment-actions">
-                <Button 
-                  variant="outline" 
-                  size="small"
-                  onClick={() => onExtend(assignment.id)}
-                >
-                  ⏰ Gia hạn
-                </Button>
+                {/*<Button */}
+                {/*  variant="outline" */}
+                {/*  size="small"*/}
+                {/*  onClick={() => onExtend(assignment.id)}*/}
+                {/*>*/}
+                {/*  ⏰ Gia hạn*/}
+                {/*</Button>*/}
                 <Button 
                   variant="danger" 
                   size="small"

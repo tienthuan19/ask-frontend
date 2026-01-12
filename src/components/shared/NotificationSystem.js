@@ -1,168 +1,148 @@
+// src/components/shared/NotificationSystem.js
 import React, { useState, useEffect } from 'react';
 import NotificationBadge from './NotificationSystem/NotificationBadge.js';
 import NotificationList from './NotificationSystem/NotificationList.js';
-import { getMyNotificationsAPI } from '../../services/classManagerService.js';
+// Import service vừa tạo ở bước 1
+import {
+  getMyNotificationsAPI,
+  markNotificationReadAPI,
+  getUnreadCountAPI
+} from '../../services/notificationService.js';
 import {
   checkDeadlines,
-  createNewAssignmentNotification,
-  createSubmissionNotification,
   getPriorityIcon,
   getTypeIcon
 } from './NotificationSystem/NotificationHelpers.js';
 import '../../styles/components/notification.css';
 
-const NotificationSystem = ({ userRole, classes, currentUser }) => {
+const NotificationSystem = ({ userRole, classes }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Thêm thông báo bài tập mới
-  const addNewAssignmentNotification = (assignment, className) => {
-    const newNotification = createNewAssignmentNotification(assignment, className);
-    setNotifications(prev => [newNotification, ...prev]);
-    setUnreadCount(prev => prev + 1);
+  // --- HÀM HELPER ĐỂ TẠO TIÊU ĐỀ TỪ TYPE ---
+  // Vì backend không trả về title, ta tự sinh title dựa vào type
+  const getTitleByType = (type) => {
+    switch (type) {
+      case 'ASSIGNMENT': return 'Bài tập mới';
+      case 'SUBMISSION': return 'Nộp bài';
+      case 'GRADE': return 'Điểm số';
+      case 'SYSTEM': return 'Hệ thống';
+      default: return 'Thông báo';
+    }
   };
 
-  // Thêm thông báo nộp bài
-  const addSubmissionNotification = (studentName, assignmentTitle, className) => {
-    const newNotification = createSubmissionNotification(studentName, assignmentTitle, className);
-    setNotifications(prev => [newNotification, ...prev]);
-    setUnreadCount(prev => prev + 1);
+  // --- LOGIC LẤY DỮ LIỆU TỪ API ---
+  const fetchNotificationData = async () => {
+    try {
+      // 1. Lấy danh sách thông báo
+      const notifResponse = await getMyNotificationsAPI();
+
+      // 2. Lấy số lượng chưa đọc (Backend đã có endpoint riêng tối ưu hơn)
+      const countResponse = await getUnreadCountAPI();
+
+      if (notifResponse && notifResponse.data) {
+        // Map dữ liệu từ Backend (NotificationResponse) sang Frontend
+        const mappedNotifications = notifResponse.data.map(n => ({
+          id: n.id,
+          title: getTitleByType(n.type), // Tự sinh tiêu đề
+          message: n.message,
+          timestamp: n.createdAt,      // Backend trả về createdAt
+          read: n.isRead,              // Backend trả về isRead
+          type: n.type,
+          priority: 'normal',          // Backend hiện chưa có priority, set mặc định
+          relatedEntityId: n.relatedEntityId
+        }));
+        setNotifications(mappedNotifications);
+      }
+
+      if (countResponse && countResponse.data !== undefined) {
+        setUnreadCount(countResponse.data);
+      }
+
+    } catch (error) {
+      console.error("Lỗi khi tải thông báo:", error);
+    }
   };
 
-  // Đánh dấu đã đọc
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId 
-          ? { ...notif, read: true }
-          : notif
-      )
+  // Gọi API khi component mount và polling mỗi 30s
+  useEffect(() => {
+    fetchNotificationData();
+    const intervalId = setInterval(fetchNotificationData, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // --- XỬ LÝ SỰ KIỆN ---
+
+  // Đánh dấu đã đọc (Gọi API PUT)
+  const handleMarkAsRead = async (notificationId) => {
+    // 1. Cập nhật UI ngay lập tức (Optimistic UI update) để trải nghiệm mượt mà
+    setNotifications(prev =>
+        prev.map(notif =>
+            notif.id === notificationId ? { ...notif, read: true } : notif
+        )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
+
+    // 2. Gọi API ngầm bên dưới
+    try {
+      await markNotificationReadAPI(notificationId);
+    } catch (error) {
+      // Nếu lỗi, có thể revert lại state hoặc thông báo lỗi (tùy chọn)
+      console.error("Lỗi khi đánh dấu đã đọc:", error);
+    }
   };
 
   // Đánh dấu tất cả đã đọc
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+  // Lưu ý: Backend bạn CHƯA CÓ endpoint "mark all read", nên ta phải loop hoặc chỉ update UI tạm thời.
+  // Dưới đây là cách loop (không tối ưu lắm nhưng hoạt động với backend hiện tại)
+  const handleMarkAllAsRead = async () => {
+    // Update UI trước
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
+
+    // Tìm các notif chưa đọc để gọi API
+    const unreadNotifs = notifications.filter(n => !n.read);
+    try {
+      await Promise.all(unreadNotifs.map(n => markNotificationReadAPI(n.id)));
+    } catch (error) {
+      console.error("Lỗi khi đánh dấu tất cả:", error);
+    }
   };
 
-  // Xóa thông báo
-  const deleteNotification = (notificationId) => {
+  // Xóa thông báo (Chỉ xóa trên UI vì Backend chưa có API xóa)
+  const handleDelete = (notificationId) => {
     const notification = notifications.find(n => n.id === notificationId);
-    setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
-    if (!notification.read) {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    if (notification && !notification.read) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
   };
-  // --- LOGIC GỌI API ---
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const data = await getMyNotificationsAPI();
-
-        if (data && Array.isArray(data)) {
-          // Map dữ liệu từ API (nếu cần thiết) để khớp với UI
-          const apiNotifications = data.map(n => ({
-            id: n.id,
-            title: n.title,
-            message: n.content || n.message, // Backend có thể trả về 'content' hoặc 'message'
-            timestamp: n.createdAt || new Date().toISOString(),
-            read: n.read || false,
-            type: n.type || 'system',
-            priority: 'normal'
-          }));
-
-          // Cập nhật state
-          setNotifications(prev => {
-            // Có thể kết hợp với thông báo Local (deadline) nếu muốn
-            // Ở đây ta ưu tiên hiển thị thông báo từ Server
-            return apiNotifications;
-          });
-
-          // Đếm số lượng chưa đọc
-          const count = apiNotifications.filter(n => !n.read).length;
-          setUnreadCount(count);
-        }
-      } catch (error) {
-        console.error("Không thể tải thông báo:", error);
-      }
-    };
-
-    // Gọi lần đầu khi component mount
-    fetchNotifications();
-
-    // Thiết lập polling: Gọi lại mỗi 30 giây để check thông báo mới
-    const intervalId = setInterval(fetchNotifications, 30000);
-
-    return () => clearInterval(intervalId);
-  }, []); // Dependency array rỗng để chạy 1 lần khi mount
-
-  // Kiểm tra deadline định kỳ
-  useEffect(() => {
-    const deadlineNotifications = checkDeadlines(classes);
-    if (deadlineNotifications.length > 0) {
-      setNotifications(prev => {
-        const existingIds = prev.map(n => n.id);
-        const newNotifications = deadlineNotifications.filter(n => !existingIds.includes(n.id));
-        if (newNotifications.length > 0) {
-          setUnreadCount(prevCount => prevCount + newNotifications.length);
-        }
-        return [...newNotifications, ...prev];
-      });
-    }
-
-    // Kiểm tra mỗi giờ
-    const interval = setInterval(() => checkDeadlines(classes), 3600000);
-    return () => clearInterval(interval);
-  }, [classes]);
 
   return (
-    <div className="notification-system">
-      <NotificationBadge 
-        unreadCount={unreadCount}
-        onClick={() => setShowNotifications(!showNotifications)}
-      />
-
-      {showNotifications && (
-        <NotificationList
-          notifications={notifications}
-          unreadCount={unreadCount}
-          onMarkRead={markAsRead}
-          onMarkAllRead={markAllAsRead}
-          onDelete={deleteNotification}
-          getPriorityIcon={getPriorityIcon}
-          getTypeIcon={getTypeIcon}
+      <div className="notification-system">
+        <NotificationBadge
+            unreadCount={unreadCount}
+            onClick={() => {
+              setShowNotifications(!showNotifications);
+              // Nếu mở dropdown, có thể gọi lại API để refresh dữ liệu mới nhất
+              if (!showNotifications) fetchNotificationData();
+            }}
         />
-      )}
-    </div>
+
+        {showNotifications && (
+            <NotificationList
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onMarkRead={handleMarkAsRead}
+                onMarkAllRead={handleMarkAllAsRead}
+                onDelete={handleDelete}
+                getPriorityIcon={getPriorityIcon}
+                getTypeIcon={getTypeIcon}
+            />
+        )}
+      </div>
   );
-};
-
-// Export hook để các component khác có thể sử dụng
-export const useNotifications = () => {
-  const [notificationSystem, setNotificationSystem] = useState(null);
-
-  const addNewAssignmentNotification = (assignment, className) => {
-    if (notificationSystem) {
-      notificationSystem.addNewAssignmentNotification(assignment, className);
-    }
-  };
-
-  const addSubmissionNotification = (studentName, assignmentTitle, className) => {
-    if (notificationSystem) {
-      notificationSystem.addSubmissionNotification(studentName, assignmentTitle, className);
-    }
-  };
-
-  return {
-    setNotificationSystem,
-    addNewAssignmentNotification,
-    addSubmissionNotification
-  };
 };
 
 export default NotificationSystem;

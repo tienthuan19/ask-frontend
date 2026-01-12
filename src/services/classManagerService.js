@@ -225,7 +225,7 @@ export const getClassMembersAPI = async (classroomId) => {
 export const getStudentGradesAPI = async (classroomId) => {
   try {
     const response = await axios.get(
-        `${API_BASE_URL}student/grades/${classroomId}`,
+        `${API_BASE_URL}/student/grades/${classroomId}`,
         getAuthHeaders() // Hàm này cần tự động thêm X-User-Id hoặc Bearer Token chứa ID
     );
     return response.data.data || [];

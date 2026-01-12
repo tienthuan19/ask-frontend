@@ -45,7 +45,12 @@ const NotificationList = ({
               onClick={() => !notification.read && onMarkRead(notification.id)}
             >
               <div className="notification-icon-wrapper">
-                <span className="type-icon">{getTypeIcon ? getTypeIcon(notification.type) : '📌'}</span>
+                <span className="type-icon">
+                  {getTypeIcon ? getTypeIcon(notification.type) : (
+                    notification.type === 'ASSIGNMENT' ? '📝' :
+                    notification.type === 'SUBMISSION' ? '📤' : '📌'
+                  )}
+                </span>
               </div>
               <div className="notification-content">
                 <p className="notification-title">{notification.title}</p>
