@@ -55,15 +55,14 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     title: '',
     description: '',
     dueDate: '',
-    timeLimit: '',
+    duration: '',
     maxScore: 100,
     questions: []
   });
   const [currentQuestion, setCurrentQuestion] = useState({
-    question: '',
-    type: 'essay',
-    points: 10,
-    sampleAnswer: ''
+    content: '',      // Backend cần content
+    score: 10,        // Backend cần score
+    modelAnswer: ''   // Backend cần modelAnswer
   });
 
   // Toggle folder expansion
@@ -110,12 +109,12 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
 
   // Add question
   const addQuestion = () => {
-    if (currentQuestion.question && currentQuestion.question.trim()) {
+    if (currentQuestion.content && currentQuestion.content.trim()) {
       setAssignmentFormData(prev => ({
         ...prev,
         questions: [...prev.questions, { ...currentQuestion, id: Date.now() }]
       }));
-      setCurrentQuestion({ question: '', type: 'essay', points: 10, sampleAnswer: '' });
+      setCurrentQuestion({ content: '', score: 10, modelAnswer: '' });
     } else {
       alert('Vui lòng nhập nội dung câu hỏi!');
     }
@@ -134,12 +133,13 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
     setAssignmentFormData({
       title: '',
       description: '',
-      deadline: '',
-      timeLimit: '',
+      dueDate: '',   // Lưu ý dùng dueDate cho khớp logic form
+      duration: '', // Form đang dùng timeLimit, API map sang duration
       maxScore: 100,
       questions: []
     });
-    setCurrentQuestion({ question: '', type: 'essay', points: 10, sampleAnswer: '' });
+    // Reset về đúng key
+    setCurrentQuestion({ content: '', score: 10, modelAnswer: '' });
   };
 
   // Navigation handlers
@@ -159,14 +159,14 @@ const ClassStructure = ({ selectedClass, onBack, onUpdateClass, userRole }) => {
         // Backend cần LocalDateTime (ISO format). Frontend datetime-local trả về 'YYYY-MM-DDTHH:mm'
         // Ta cần đảm bảo nó đúng chuẩn ISO 8601
         dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
-        duration: parseInt(formData.timeLimit), // Backend: Integer duration
+        duration: parseInt(formData.duration), // Backend: Integer duration
         maxScore: parseInt(formData.maxScore),  // Backend: Integer maxScore
 
         // Map danh sách câu hỏi
         questions: formData.questions.map(q => ({
-          content: q.question,      // Frontend: question -> Backend: content
-          modelAnswer: q.sampleAnswer, // Frontend: sampleAnswer -> Backend: modelAnswer
-          score: parseInt(q.points) // Frontend: points -> Backend: score
+          content: q.content,         // Đã khớp
+          modelAnswer: q.modelAnswer, // Đã khớp
+          score: parseInt(q.score)// Frontend: points -> Backend: score
           // Lưu ý: Backend QuestionRequest hiện tại KHÔNG có trường 'type' (Trắc nghiệm/Tự luận)
           // Nếu cần, bạn phải update Backend thêm field 'type' vào QuestionRequest.java
         }))

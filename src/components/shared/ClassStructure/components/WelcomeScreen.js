@@ -17,15 +17,15 @@ const WelcomeScreen = ({ selectedClass, onNavigate }) => {
     { 
       icon: '📢', 
       label: 'Thông báo', 
-      value: 0,
+      value: selectedClass.assignments?.length || 0,
       color: '#ea580c'
     },
-    { 
-      icon: '📚', 
-      label: 'Tài liệu', 
-      value: 0,
-      color: '#059669'
-    }
+    // {
+    //   icon: '📚',
+    //   label: 'Tài liệu',
+    //   value: 0,
+    //   color: '#059669'
+    // }
   ];
 
   const quickActions = [
@@ -57,20 +57,20 @@ const WelcomeScreen = ({ selectedClass, onNavigate }) => {
       action: 'announcement-list',
       gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
     },
-    { 
-      icon: '📚', 
-      title: 'Tài liệu', 
-      desc: 'Quản lý tài liệu học tập',
-      action: 'material-list',
-      gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
-    },
-    { 
-      icon: '📤', 
-      title: 'Tải tài liệu lên', 
-      desc: 'Chia sẻ tài liệu mới',
-      action: 'upload-material',
-      gradient: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
-    }
+    // {
+    //   icon: '📚',
+    //   title: 'Tài liệu',
+    //   desc: 'Quản lý tài liệu học tập',
+    //   action: 'material-list',
+    //   gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)'
+    // },
+    // {
+    //   icon: '📤',
+    //   title: 'Tải tài liệu lên',
+    //   desc: 'Chia sẻ tài liệu mới',
+    //   action: 'upload-material',
+    //   gradient: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)'
+    // }
   ];
 
   return (

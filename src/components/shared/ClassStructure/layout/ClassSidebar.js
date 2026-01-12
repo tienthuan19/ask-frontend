@@ -26,15 +26,15 @@ const ClassSidebar = ({ expandedFolders, onToggleFolder, onNavigate }) => {
         { id: 'create-announcement', label: 'Tạo thông báo' }
       ]
     },
-    {
-      id: 'materials',
-      icon: '📚',
-      title: 'Tài liệu',
-      items: [
-        { id: 'material-list', label: 'Danh sách tài liệu' },
-        { id: 'upload-material', label: 'Tải tài liệu lên' }
-      ]
-    },
+    // {
+    //   id: 'materials',
+    //   icon: '📚',
+    //   title: 'Tài liệu',
+    //   items: [
+    //     { id: 'material-list', label: 'Danh sách tài liệu' },
+    //     { id: 'upload-material', label: 'Tải tài liệu lên' }
+    //   ]
+    // },
     {
       id: 'students',
       icon: '👥',

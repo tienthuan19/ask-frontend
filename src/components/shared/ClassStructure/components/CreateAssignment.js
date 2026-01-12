@@ -21,7 +21,14 @@ const CreateAssignment = ({
     if (formData.title?.trim() && formData.questions?.length > 0) {
       setIsSubmitting(true); // Khóa nút
       try {
-        await onCreate(formData); // Chờ hàm cha xử lý API
+        const payload = {
+          ...formData,
+          // If formData still uses 'deadline', map it to 'dueDate'
+          dueDate: formData.dueDate,
+          // If formData uses 'timeLimit', map it to 'duration'
+          duration: formData.duration
+        };
+        await onCreate(payload); // Chờ hàm cha xử lý API
       } catch (err) {
         console.error(err);
       } finally {
@@ -99,8 +106,8 @@ const CreateAssignment = ({
                 </label>
                 <input
                   type="datetime-local"
-                  value={formData.deadline || ''}
-                  onChange={(e) => onUpdateField('deadline', e.target.value)}
+                  value={formData.dueDate || ''}
+                  onChange={(e) => onUpdateField('dueDate', e.target.value)}
                   className="form-input"
                 />
               </div>
@@ -112,8 +119,8 @@ const CreateAssignment = ({
                 </label>
                 <input
                   type="number"
-                  value={formData.timeLimit || ''}
-                  onChange={(e) => onUpdateField('timeLimit', e.target.value)}
+                  value={formData.duration || ''}
+                  onChange={(e) => onUpdateField('duration', e.target.value)}
                   placeholder="60"
                   className="form-input"
                   min="1"
@@ -155,8 +162,8 @@ const CreateAssignment = ({
                   Nội dung câu hỏi <span className="required">*</span>
                 </label>
                 <textarea
-                  value={currentQuestion?.question || ''}
-                  onChange={(e) => onUpdateQuestion('question', e.target.value)}
+                  value={currentQuestion?.content || ''}
+                  onChange={(e) => onUpdateQuestion('content', e.target.value)}
                   placeholder="Nhập nội dung câu hỏi..."
                   className="form-textarea"
                   rows={3}
@@ -164,21 +171,21 @@ const CreateAssignment = ({
               </div>
 
               <div className="form-row-2">
-                <div className="form-group">
-                  <label>
-                    <span className="label-icon">📊</span>
-                    Loại câu hỏi
-                  </label>
-                  <select
-                    value={currentQuestion?.type || 'essay'}
-                    onChange={(e) => onUpdateQuestion('type', e.target.value)}
-                    className="form-select"
-                  >
-                    <option value="essay">Tự luận</option>
-                    <option value="short-answer">Trả lời ngắn</option>
-                    <option value="file-upload">Nộp file</option>
-                  </select>
-                </div>
+                {/*<div className="form-group">*/}
+                {/*  <label>*/}
+                {/*    <span className="label-icon">📊</span>*/}
+                {/*    Loại câu hỏi*/}
+                {/*  </label>*/}
+                {/*  <select*/}
+                {/*    value={currentQuestion?.type || 'essay'}*/}
+                {/*    onChange={(e) => onUpdateQuestion('type', e.target.value)}*/}
+                {/*    className="form-select"*/}
+                {/*  >*/}
+                {/*    <option value="essay">Tự luận</option>*/}
+                {/*    <option value="short-answer">Trả lời ngắn</option>*/}
+                {/*    <option value="file-upload">Nộp file</option>*/}
+                {/*  </select>*/}
+                {/*</div>*/}
 
                 <div className="form-group">
                   <label>
@@ -187,8 +194,8 @@ const CreateAssignment = ({
                   </label>
                   <input
                     type="number"
-                    value={currentQuestion?.points || 10}
-                    onChange={(e) => onUpdateQuestion('points', Number(e.target.value))}
+                    value={currentQuestion?.score || 10}
+                    onChange={(e) => onUpdateQuestion('score', Number(e.target.value))}
                     className="form-input"
                     min="1"
                   />
@@ -201,8 +208,8 @@ const CreateAssignment = ({
                   Đáp án mẫu (tùy chọn)
                 </label>
                 <textarea
-                  value={currentQuestion?.sampleAnswer || ''}
-                  onChange={(e) => onUpdateQuestion('sampleAnswer', e.target.value)}
+                  value={currentQuestion?.modelAnswer || ''}
+                  onChange={(e) => onUpdateQuestion('modelAnswer', e.target.value)}
                   placeholder="Đáp án mẫu để AI tham khảo khi chấm điểm..."
                   className="form-textarea"
                   rows={3}
@@ -227,16 +234,16 @@ const CreateAssignment = ({
                   <div key={q.id} className="question-item">
                     <div className="question-number">{index + 1}</div>
                     <div className="question-content">
-                      <p className="question-text">{q.question}</p>
+                      <p className="question-text">{q.content}</p>
                       <div className="question-meta">
                         <span className="meta-item">
                           📊 {q.type === 'essay' ? 'Tự luận' : q.type === 'short-answer' ? 'Trả lời ngắn' : 'Nộp file'}
                         </span>
-                        <span className="meta-item">💯 {q.points} điểm</span>
+                        <span className="meta-item">💯 {q.score} điểm</span>
                       </div>
-                      {q.sampleAnswer && (
+                      {q.modelAnswer && (
                         <p className="sample-answer">
-                          <strong>Đáp án mẫu:</strong> {q.sampleAnswer}
+                          <strong>Đáp án mẫu:</strong> {q.modelAnswer}
                         </p>
                       )}
                     </div>

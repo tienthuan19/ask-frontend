@@ -6,7 +6,13 @@ import NotificationSystem from "../shared/NotificationSystem.js";
 import ProfileComponent from "../shared/ProfileComponent.js";
 import "../../styles/globals.css";
 import "../../styles/pages/student.css";
-import {getClassAssignmentsAPI, getStudentClassesAPI, joinClassAPI, getStudentPendingAssignmentsAPI} from "../../services/classManagerService.js";
+import {
+  getClassAssignmentsAPI,
+  getStudentClassesAPI,
+  joinClassAPI,
+  getStudentPendingAssignmentsAPI,
+  getClassAnnouncementsAPI
+} from "../../services/classManagerService.js";
 
 const Student = () => {
   const navigate = useNavigate();
@@ -20,6 +26,7 @@ const Student = () => {
   const [isJoining, setIsJoining] = useState(false);
   const [searchResult, setSearchResult] = useState(null);
   const [assignments, setAssignments] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [studentInfo, setStudentInfo] = useState({
@@ -67,6 +74,16 @@ const Student = () => {
     }
   }, [loadStudentClasses, studentInfo.id]);
 
+  useEffect(() => {
+    if (selectedClassId && activeTab === "classDetails") {
+      if (activeClassTab === "assignments") {
+        loadClassAssignments(selectedClassId);
+      } else if (activeClassTab === "announcements") {
+        loadClassAnnouncements(selectedClassId);
+      }
+    }
+  }, [selectedClassId, activeClassTab, activeTab]);
+
   // --- Handlers ---
 
   const handleViewClass = async (classId) => {
@@ -97,6 +114,28 @@ const Student = () => {
     }
   };
 
+  const loadClassAnnouncements = async (classId) => {
+    try {
+      setIsLoading(true);
+      // Gọi API: /api/lms-backend/v1/classrooms/{classroomId}/announcements
+      const data = await getClassAnnouncementsAPI(classId);
+
+      if (Array.isArray(data)) {
+        // Sắp xếp thông báo mới nhất lên đầu (dựa vào createdAt)
+        const sortedData = data.sort((a, b) =>
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setAnnouncements(sortedData);
+      } else {
+        setAnnouncements([]);
+      }
+    } catch (error) {
+      console.error("Failed to load announcements:", error);
+      setAnnouncements([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const handleSearchClass = () => {
     if (classCode.trim() === '') {
       alert('Vui lòng nhập mã lớp học!');
@@ -141,7 +180,32 @@ const Student = () => {
     localStorage.clear();
     navigate("/", { replace: true });
   };
-
+  // --- Helpers ---
+  // Helper render mức độ ưu tiên (BẠN ĐANG THIẾU HÀM NÀY)
+  const renderPriorityBadge = (priority) => {
+    const p = priority ? priority.toLowerCase() : 'normal';
+    const styles = {
+      urgent: { backgroundColor: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2' },
+      high: { backgroundColor: '#fff3e0', color: '#ef6c00', border: '1px solid #ffe0b2' },
+      normal: { backgroundColor: '#e3f2fd', color: '#1565c0', border: '1px solid #bbdefb' }
+    };
+    const labels = {
+      urgent: 'Khẩn cấp',
+      high: 'Quan trọng',
+      normal: 'Thông thường'
+    };
+    return (
+        <span style={{
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '0.8rem',
+          fontWeight: '500',
+          ...styles[p]
+        }}>
+        {labels[p] || priority}
+      </span>
+    );
+  };
   const selectedClass = joinedClasses.find(c => c.id === selectedClassId);
 
   return (
@@ -331,12 +395,12 @@ const Student = () => {
           >
             📝 Bài tập ({assignments.length})
           </button>
-          <button 
-            className={activeClassTab === "materials" ? "active" : ""}
-            onClick={() => setActiveClassTab("materials")}
-          >
-            📚 Tài liệu
-          </button>
+          {/*<button */}
+          {/*  className={activeClassTab === "materials" ? "active" : ""}*/}
+          {/*  onClick={() => setActiveClassTab("materials")}*/}
+          {/*>*/}
+          {/*  📚 Tài liệu*/}
+          {/*</button>*/}
           <button 
             className={activeClassTab === "announcements" ? "active" : ""}
             onClick={() => setActiveClassTab("announcements")}
@@ -439,26 +503,68 @@ const Student = () => {
           </div>
         )}
 
-        {/* Tab: Tài liệu */}
-        {activeClassTab === "materials" && (
-          <div className="materials-section">
-            <div className="empty-state">
-              <div className="empty-icon">📚</div>
-              <h4>Chưa có tài liệu nào</h4>
-              <p>Giáo viên chưa tải lên tài liệu cho lớp này</p>
-            </div>
-          </div>
-        )}
+        {/*/!* Tab: Tài liệu *!/*/}
+        {/*{activeClassTab === "materials" && (*/}
+        {/*  <div className="materials-section">*/}
+        {/*    <div className="empty-state">*/}
+        {/*      <div className="empty-icon">📚</div>*/}
+        {/*      <h4>Chưa có tài liệu nào</h4>*/}
+        {/*      <p>Giáo viên chưa tải lên tài liệu cho lớp này</p>*/}
+        {/*    </div>*/}
+        {/*  </div>*/}
+        {/*)}*/}
 
         {/* Tab: Thông báo */}
         {activeClassTab === "announcements" && (
-          <div className="announcements-section">
-            <div className="empty-state">
-              <div className="empty-icon">📢</div>
-              <h4>Chưa có thông báo nào</h4>
-              <p>Giáo viên chưa đăng thông báo cho lớp này</p>
+            <div className="announcements-section">
+              {isLoading ? (
+                  <div className="loading-state">⏳ Đang tải thông báo...</div>
+              ) : announcements.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">📢</div>
+                    <h4>Chưa có thông báo nào</h4>
+                    <p>Giáo viên chưa đăng thông báo cho lớp này</p>
+                  </div>
+              ) : (
+                  <div className="announcements-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {announcements.map((announcement) => (
+                        <div key={announcement.id} className="announcement-card" style={{
+                          backgroundColor: 'white',
+                          padding: '20px',
+                          borderRadius: '8px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          borderLeft: '4px solid #1976d2'
+                        }}>
+                          <div className="announcement-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {renderPriorityBadge(announcement.priority)}
+                              <span style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{announcement.title}</span>
+                            </div>
+                            <span className="announcement-date" style={{ color: '#666', fontSize: '0.9rem' }}>
+                        📅 {new Date(announcement.createdAt).toLocaleString('vi-VN')}
+                      </span>
+                          </div>
+
+                          <div className="announcement-content" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                            {announcement.content}
+                          </div>
+
+                          {announcement.attachmentUrl && (
+                              <div className="announcement-attachment" style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid #eee' }}>
+                                <a href={announcement.attachmentUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#1976d2', textDecoration: 'none' }}>
+                                  📎 Tải xuống tài liệu đính kèm
+                                </a>
+                              </div>
+                          )}
+
+                          <div className="announcement-footer" style={{ marginTop: '10px', fontSize: '0.85rem', color: '#888' }}>
+                            ✍️ Đăng bởi: Giáo viên
+                          </div>
+                        </div>
+                    ))}
+                  </div>
+              )}
             </div>
-          </div>
         )}
 
         {/* Tab: Điểm số */}

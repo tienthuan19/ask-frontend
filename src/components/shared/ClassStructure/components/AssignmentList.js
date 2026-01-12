@@ -37,7 +37,7 @@ const AssignmentList = ({ assignments = [], onDelete, onExtend, onStart }) => {
               <div className="assignment-meta">
                 <span>⏰ Deadline: {formatDate(assignment.dueDate)}</span>
                 <span>📊 Điểm tối đa: {assignment.maxScore}</span>
-                <span>❓ Số câu hỏi: {assignment.questions?.length || 0}</span>
+                <span>❓ Số câu hỏi: {assignment.numberOfQuestions || 0}</span>
                 
                 {assignment.dueDate && (
                   <span className={`deadline-status ${overdue ? 'overdue' : 'active'}`}>
