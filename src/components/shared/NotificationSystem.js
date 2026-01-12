@@ -1,15 +1,12 @@
-// src/components/shared/NotificationSystem.js
 import React, { useState, useEffect } from 'react';
 import NotificationBadge from './NotificationSystem/NotificationBadge.js';
 import NotificationList from './NotificationSystem/NotificationList.js';
-// Import service vừa tạo ở bước 1
 import {
   getMyNotificationsAPI,
   markNotificationReadAPI,
   getUnreadCountAPI
 } from '../../services/notificationService.js';
 import {
-  checkDeadlines,
   getPriorityIcon,
   getTypeIcon
 } from './NotificationSystem/NotificationHelpers.js';
@@ -20,44 +17,65 @@ const NotificationSystem = ({ userRole, classes }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // --- HÀM HELPER ĐỂ TẠO TIÊU ĐỀ TỪ TYPE ---
-  // Vì backend không trả về title, ta tự sinh title dựa vào type
+  // --- HÀM HELPER: Lấy tiêu đề dựa trên loại thông báo ---
   const getTitleByType = (type) => {
     switch (type) {
       case 'ASSIGNMENT': return 'Bài tập mới';
       case 'SUBMISSION': return 'Nộp bài';
       case 'GRADE': return 'Điểm số';
       case 'SYSTEM': return 'Hệ thống';
+      case 'ANNOUNCEMENT': return 'Thông báo chung';
       default: return 'Thông báo';
     }
   };
 
-  // --- LOGIC LẤY DỮ LIỆU TỪ API ---
+  // --- LOGIC LẤY DỮ LIỆU TỪ API (Gộp chung thành 1 hàm) ---
   const fetchNotificationData = async () => {
     try {
-      // 1. Lấy danh sách thông báo
-      const notifResponse = await getMyNotificationsAPI();
+      console.log("Đang gọi API lấy thông báo..."); // Debug log
 
-      // 2. Lấy số lượng chưa đọc (Backend đã có endpoint riêng tối ưu hơn)
+      // 1. Gọi API lấy danh sách
+      const response = await getMyNotificationsAPI();
+
+      // 2. Gọi API lấy số lượng chưa đọc
       const countResponse = await getUnreadCountAPI();
 
-      if (notifResponse && notifResponse.data) {
-        // Map dữ liệu từ Backend (NotificationResponse) sang Frontend
-        const mappedNotifications = notifResponse.data.map(n => ({
+      // Kiểm tra dữ liệu trả về từ API danh sách
+      // Cấu trúc mong đợi: { status: 200, message: "...", data: [...] }
+      const notificationList = response?.data || [];
+
+      if (Array.isArray(notificationList)) {
+        console.log("Dữ liệu nhận được:", notificationList); // Debug log: Xem dữ liệu thô
+
+        const mappedNotifications = notificationList.map(n => ({
           id: n.id,
-          title: getTitleByType(n.type), // Tự sinh tiêu đề
-          message: n.message,
-          timestamp: n.createdAt,      // Backend trả về createdAt
-          read: n.isRead,              // Backend trả về isRead
+          title: getTitleByType(n.type),
+          message: n.message || n.content, // Fallback nếu backend đổi tên trường
+          timestamp: n.createdAt,
+
+          // --- SỬA LỖI QUAN TRỌNG Ở ĐÂY ---
+          // JSON backend trả về "read", không phải "isRead"
+          read: n.read !== undefined ? n.read : n.isRead,
+
           type: n.type,
-          priority: 'normal',          // Backend hiện chưa có priority, set mặc định
+          priority: 'normal',
           relatedEntityId: n.relatedEntityId
         }));
+
         setNotifications(mappedNotifications);
+      } else {
+        console.warn("API trả về không phải là mảng:", response);
       }
 
+      // Cập nhật số lượng chưa đọc
       if (countResponse && countResponse.data !== undefined) {
         setUnreadCount(countResponse.data);
+      } else {
+        // Fallback: tự đếm nếu API count lỗi
+        if (Array.isArray(notificationList)) {
+          const count = notificationList.filter(n => !n.read).length;
+          setUnreadCount(count);
+        }
       }
 
     } catch (error) {
@@ -65,18 +83,18 @@ const NotificationSystem = ({ userRole, classes }) => {
     }
   };
 
-  // Gọi API khi component mount và polling mỗi 30s
+  // --- USE EFFECT: Gọi API khi component mount & Polling ---
   useEffect(() => {
-    fetchNotificationData();
+    fetchNotificationData(); // Gọi ngay lần đầu
+
+    // Polling mỗi 30 giây
     const intervalId = setInterval(fetchNotificationData, 30000);
     return () => clearInterval(intervalId);
   }, []);
 
-  // --- XỬ LÝ SỰ KIỆN ---
-
-  // Đánh dấu đã đọc (Gọi API PUT)
+  // --- HANDLER: Đánh dấu đã đọc ---
   const handleMarkAsRead = async (notificationId) => {
-    // 1. Cập nhật UI ngay lập tức (Optimistic UI update) để trải nghiệm mượt mà
+    // 1. Cập nhật UI ngay lập tức (Optimistic UI)
     setNotifications(prev =>
         prev.map(notif =>
             notif.id === notificationId ? { ...notif, read: true } : notif
@@ -84,33 +102,25 @@ const NotificationSystem = ({ userRole, classes }) => {
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
 
-    // 2. Gọi API ngầm bên dưới
+    // 2. Gọi API ngầm
     try {
       await markNotificationReadAPI(notificationId);
     } catch (error) {
-      // Nếu lỗi, có thể revert lại state hoặc thông báo lỗi (tùy chọn)
-      console.error("Lỗi khi đánh dấu đã đọc:", error);
+      console.error("Lỗi API mark read:", error);
     }
   };
 
-  // Đánh dấu tất cả đã đọc
-  // Lưu ý: Backend bạn CHƯA CÓ endpoint "mark all read", nên ta phải loop hoặc chỉ update UI tạm thời.
-  // Dưới đây là cách loop (không tối ưu lắm nhưng hoạt động với backend hiện tại)
   const handleMarkAllAsRead = async () => {
-    // Update UI trước
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
-
-    // Tìm các notif chưa đọc để gọi API
     const unreadNotifs = notifications.filter(n => !n.read);
     try {
       await Promise.all(unreadNotifs.map(n => markNotificationReadAPI(n.id)));
     } catch (error) {
-      console.error("Lỗi khi đánh dấu tất cả:", error);
+      console.error("Lỗi mark all read:", error);
     }
   };
 
-  // Xóa thông báo (Chỉ xóa trên UI vì Backend chưa có API xóa)
   const handleDelete = (notificationId) => {
     const notification = notifications.find(n => n.id === notificationId);
     setNotifications(prev => prev.filter(n => n.id !== notificationId));
@@ -125,7 +135,7 @@ const NotificationSystem = ({ userRole, classes }) => {
             unreadCount={unreadCount}
             onClick={() => {
               setShowNotifications(!showNotifications);
-              // Nếu mở dropdown, có thể gọi lại API để refresh dữ liệu mới nhất
+              // Refresh dữ liệu khi mở dropdown
               if (!showNotifications) fetchNotificationData();
             }}
         />
