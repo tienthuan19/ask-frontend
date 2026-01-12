@@ -1,144 +1,140 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/components/dashboard.css';
+import {
+  getDashboardStatsAPI,
+  getTeacherClassesAPI,
+  getClassAssignmentsAPI
+} from '../../services/classManagerService.js';
 
-function TeacherDashboard({ classes }) {
+function TeacherDashboard() {
+  const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState({
-    totalClasses: 0,
+    totalClassrooms: 0,
     totalStudents: 0,
-    totalTests: 0,
+    totalAssignments: 0,
     averageScore: 0,
     completionRate: 0
   });
 
+  const [classDetails, setClassDetails] = useState([]);
+
   useEffect(() => {
-    if (classes && classes.length > 0) {
-      const totalClasses = classes.length;
-      const totalStudents = classes.reduce((sum, cls) => sum + cls.students.length, 0);
-      const totalTests = classes.reduce((sum, cls) => sum + cls.tests.length, 0);
-      
-      // Tính điểm trung bình và tỉ lệ hoàn thành
-      let totalScores = 0;
-      let scoreCount = 0;
-      let completedTests = 0;
-      let totalPossibleTests = 0;
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
 
-      classes.forEach(cls => {
-        cls.students.forEach(student => {
-          cls.tests.forEach(test => {
-            totalPossibleTests++;
-            if (student.scores && student.scores[test.id]) {
-              const score = parseFloat(student.scores[test.id]);
-              if (!isNaN(score)) {
-                totalScores += score;
-                scoreCount++;
-                completedTests++;
-              }
-            }
+        // 1. Gọi API lấy thống kê tổng quan (Backend đã trả về đủ 5 trường)
+        const basicStats = await getDashboardStatsAPI();
+
+        // --- CẬP NHẬT STATE TỪ API ---
+        // Lưu ý: Dùng trực tiếp basicStats, không cần tính toán thủ công nữa
+        if (basicStats) {
+          setStats({
+            totalClassrooms: basicStats.totalClassrooms || 0,
+            totalStudents: basicStats.totalStudents || 0,
+            totalAssignments: basicStats.totalAssignments || 0, // Lấy từ API
+            averageScore: basicStats.averageScore || 0,         // Lấy từ API
+            completionRate: basicStats.completionRate || 0      // Lấy từ API
           });
-        });
-      });
+        }
 
-      const averageScore = scoreCount > 0 ? (totalScores / scoreCount) : 0;
-      const completionRate = totalPossibleTests > 0 ? (completedTests / totalPossibleTests) * 100 : 0;
+        // 2. Gọi API lấy danh sách lớp (để hiển thị list bên dưới)
+        const classes = await getTeacherClassesAPI();
 
-      setStats({
-        totalClasses,
-        totalStudents,
-        totalTests,
-        averageScore: averageScore.toFixed(1),
-        completionRate: completionRate.toFixed(1)
-      });
-    }
-  }, [classes]);
+        // 3. Lấy số lượng bài tập riêng cho từng lớp (để hiển thị chi tiết)
+        const classesWithData = await Promise.all(classes.map(async (cls) => {
+          try {
+            const assignments = await getClassAssignmentsAPI(cls.id);
+            return {
+              ...cls,
+              assignmentCount: assignments ? assignments.length : 0,
+              avgScore: 0 // Backend API chi tiết lớp chưa có avgScore, tạm để 0
+            };
+          } catch (err) {
+            console.error(`Lỗi lấy bài tập lớp ${cls.name}`, err);
+            return { ...cls, assignmentCount: 0, avgScore: 0 };
+          }
+        }));
 
-  // Dữ liệu cho biểu đồ (mock data cho demo)
-  const getClassStats = () => {
-    return classes.map(cls => {
-      const avgScore = cls.students.reduce((sum, student) => {
-        const scores = Object.values(student.scores || {}).filter(score => !isNaN(parseFloat(score)));
-        const studentAvg = scores.length > 0 ? 
-          scores.reduce((s, score) => s + parseFloat(score), 0) / scores.length : 0;
-        return sum + studentAvg;
-      }, 0) / (cls.students.length || 1);
+        setClassDetails(classesWithData);
 
-      return {
-        name: cls.name,
-        avgScore: avgScore.toFixed(1),
-        studentCount: cls.students.length,
-        testCount: cls.tests.length
-      };
-    });
-  };
+      } catch (error) {
+        console.error("Lỗi tải dữ liệu Dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return <div className="dashboard-loading">⏳ Đang tải thống kê...</div>;
+  }
 
   return (
-    <div className="dashboard">
-      <h2>Dashboard Thống kê</h2>
-      
-      {/* Thống kê tổng quan */}
-      <div className="stats-overview">
-        <div className="stat-card">
-          <div className="stat-number">{stats.totalClasses}</div>
-          <div className="stat-label">Lớp học</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{stats.totalStudents}</div>
-          <div className="stat-label">Học sinh</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{stats.totalTests}</div>
-          <div className="stat-label">Bài kiểm tra</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{stats.averageScore}</div>
-          <div className="stat-label">Điểm TB</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{stats.completionRate}%</div>
-          <div className="stat-label">Hoàn thành</div>
-        </div>
-      </div>
+      <div className="dashboard">
+        <h2>📊 Dashboard Thống kê</h2>
 
-      {/* Thống kê từng lớp */}
-      <div className="class-stats">
-        <h3>Thống kê từng lớp</h3>
-        {getClassStats().map((cls, idx) => (
-          <div key={idx} className="class-stat-item">
-            <div className="class-info">
-              <strong>{cls.name}</strong>
-              <span>{cls.studentCount} HS | {cls.testCount} bài kiểm tra</span>
-            </div>
-            <div className="class-score">
-              <div className="score-bar">
-                <div 
-                  className="score-fill" 
-                  style={{ width: `${(cls.avgScore / 10) * 100}%` }}
-                ></div>
-              </div>
-              <span>{cls.avgScore}/10</span>
-            </div>
+        {/* Thống kê tổng quan */}
+        <div className="stats-overview">
+          <div className="stat-card">
+            <div className="stat-number">{stats.totalClassrooms}</div>
+            <div className="stat-label">Lớp học</div>
           </div>
-        ))}
-      </div>
-
-      {/* Biểu đồ điểm số (đơn giản) */}
-      <div className="score-chart">
-        <h3>Phân bố điểm số</h3>
-        <div className="chart-placeholder">
-          <p>Biểu đồ phân bố điểm số theo lớp</p>
-          <div className="simple-chart">
-            {getClassStats().map((cls, idx) => (
-              <div key={idx} className="chart-bar">
-                <div 
-                  className="bar" 
-                  style={{ height: `${(cls.avgScore / 10) * 100}px` }}
-                ></div>
-                <span className="bar-label">{cls.name}</span>
-              </div>
-            ))}
+          <div className="stat-card">
+            <div className="stat-number">{stats.totalStudents}</div>
+            <div className="stat-label">Học sinh</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.totalAssignments}</div>
+            <div className="stat-label">Bài tập đã giao</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.averageScore}</div>
+            <div className="stat-label">Điểm TB</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-number">{stats.completionRate}%</div>
+            <div className="stat-label">Hoàn thành</div>
           </div>
         </div>
+
+        {/* Thống kê từng lớp */}
+        <div className="class-stats">
+          <h3>📋 Chi tiết từng lớp</h3>
+          {classDetails.length === 0 ? (
+              <p>Chưa có lớp học nào.</p>
+          ) : (
+              classDetails.map((cls) => (
+                  <div key={cls.id} className="class-stat-item">
+                    <div className="class-info">
+                      <strong>{cls.name}</strong>
+                      <span className="class-sub-info">
+                        {cls.subject} | Mã: {cls.classCode}
+                      </span>
+                    </div>
+
+                    <div className="class-metrics">
+                      <div className="metric-item">
+                        <span className="metric-val">{cls.numberOfStudents || 0}</span>
+                        <span className="metric-label">Học sinh</span>
+                      </div>
+                      <div className="metric-item">
+                        <span className="metric-val">{cls.assignmentCount}</span>
+                        <span className="metric-label">Bài tập</span>
+                      </div>
+                      <div className="metric-item disabled">
+                        <span className="metric-val">--</span>
+                        <span className="metric-label">Điểm TB</span>
+                      </div>
+                    </div>
+                  </div>
+              ))
+          )}
+        </div>
       </div>
-    </div>
   );
 }
 

@@ -352,8 +352,10 @@ const Student = () => {
       </div>
 
       {/* Tab: Lịch học */}
+      {/* Tab: Lịch học */}
       <div className={`content ${activeTab === "calendar" ? "active" : ""}`}>
-        <StudentCalendar />
+        {/* Truyền state joinedClasses vào đây */}
+        <StudentCalendar joinedClasses={joinedClasses} />
       </div>
 
       {/* Tab: Hồ sơ */}

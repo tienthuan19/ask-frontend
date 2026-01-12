@@ -1,37 +1,67 @@
-import React, {useState, useEffect, useMemo} from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/components/calendar.css';
+// Import đúng file service (nhớ có đuôi .js)
+import { getStudentPendingAssignmentsAPI } from '../../services/classManagerService.js';
 
 function StudentCalendar({ joinedClasses = [] }) {
-  const [upcomingTests, setUpcomingTests] = useState([]);
+  // Đổi tên state thành assignments cho đúng ngữ nghĩa
+  const [upcomingAssignments, setUpcomingAssignments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  // Cách 1 (Khuyên dùng): Sử dụng useMemo để tính toán tests, không cần useEffect/useState
-  // Việc này giúp tránh re-render thừa và loại bỏ hoàn toàn vòng lặp state.
-  const processedTests = useMemo(() => {
-    if (!joinedClasses || joinedClasses.length === 0) return [];
+  // --- 1. CALL API LẤY DANH SÁCH BÀI TẬP ---
+  useEffect(() => {
+    const fetchAllAssignments = async () => {
+      if (!joinedClasses || joinedClasses.length === 0) {
+        setUpcomingAssignments([]);
+        return;
+      }
 
-    const tests = [];
-    joinedClasses.forEach(cls => {
-      // Kiểm tra an toàn để tránh lỗi nếu cls.tests undefined
-      if (cls.tests && Array.isArray(cls.tests)) {
-        cls.tests.forEach(test => {
-          if (test.deadline) {
-            tests.push({
-              ...test,
+      setLoading(true);
+      try {
+        const promises = joinedClasses.map(async (cls) => {
+          try {
+            // Gọi API lấy bài tập chưa nộp (pending)
+            // Backend: ApiResponse<List<AssignmentResponse>>
+            const assignments = await getStudentPendingAssignmentsAPI(cls.id);
+
+            const safeAssignments = Array.isArray(assignments) ? assignments : [];
+
+            // Map thêm thông tin lớp học vào object bài tập
+            return safeAssignments.map(assignment => ({
+              ...assignment,
               className: cls.name,
-              classCode: cls.code
-            });
+              classCode: cls.classCode,
+              classId: cls.id
+            }));
+          } catch (err) {
+            console.error(`Lỗi lấy bài tập lớp ${cls.name}:`, err);
+            return [];
           }
         });
+
+        const results = await Promise.all(promises);
+        const allAssignments = results.flat();
+
+        // Sắp xếp theo deadline (cái nào gấp nhất lên đầu)
+        const sortedAssignments = allAssignments.sort((a, b) =>
+            new Date(a.dueDate) - new Date(b.dueDate)
+        );
+
+        setUpcomingAssignments(sortedAssignments);
+      } catch (error) {
+        console.error("Lỗi tải lịch bài tập:", error);
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    // Sắp xếp theo deadline
-    return tests.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-  }, [JSON.stringify(joinedClasses)]);
-  // Mẹo: Dùng JSON.stringify để so sánh nội dung mảng thay vì so sánh tham chiếu
-  // Hoặc nếu joinedClasses quá lớn, hãy chỉ so sánh ID: joinedClasses.map(c => c.id).join(',')
+    fetchAllAssignments();
+  }, [joinedClasses]);
 
-  // Cập nhật lại các hàm helper để dùng processedTests thay vì state
+  // --- 2. CÁC HÀM XỬ LÝ HIỂN THỊ ---
+
   const isOverdue = (deadline) => {
     return new Date(deadline) < new Date();
   };
@@ -59,77 +89,99 @@ function StudentCalendar({ joinedClasses = [] }) {
     const hours = diff / (1000 * 60 * 60);
 
     if (hours <= 0) return 'overdue';
-    if (hours <= 24) return 'urgent';
-    if (hours <= 72) return 'soon';
+    if (hours <= 24) return 'urgent'; // Gấp: < 24h
+    if (hours <= 72) return 'soon';   // Sắp tới: < 3 ngày
     return 'normal';
   };
 
+  const handleDoAssignment = (assignment) => {
+    // Điều hướng đến trang chi tiết bài tập để nộp bài
+    navigate(`/assignment/${assignment.id}`);
+  };
+
+  if (loading) {
+    return <div className="student-calendar">Đang tải danh sách bài tập...</div>;
+  }
+
   return (
-    <div className="student-calendar">
-      <h2>📅 Lịch nộp bài</h2>
+      <div className="student-calendar">
+        <h2>📅 Lịch nộp bài tập</h2>
 
-      {upcomingTests.length === 0 ? (
-        <div className="no-tests">
-          <p>🎉 Bạn không có bài kiểm tra nào sắp tới!</p>
-        </div>
-      ) : (
-        <div className="tests-timeline">
-          {upcomingTests.map(test => (
-            <div key={`${test.id}-${test.classCode}`} className={`test-item ${getPriorityClass(test.deadline)}`}>
-              <div className="test-info">
-                <div className="test-header">
-                  <h4>{test.name}</h4>
-                  <span className="class-badge">{test.className}</span>
-                </div>
-                <div className="test-details">
-                  <div className="deadline-info">
-                    <strong>⏰ Deadline:</strong> {new Date(test.deadline).toLocaleString('vi-VN')}
-                  </div>
-                  <div className="time-remaining">
-                    <strong>Còn lại:</strong> 
-                    <span className={isOverdue(test.deadline) ? 'overdue-text' : 'time-text'}>
-                      {getTimeRemaining(test.deadline)}
-                    </span>
-                  </div>
-                  {test.timeLimit && (
-                    <div className="time-limit">
-                      <strong>⏱️ Thời gian:</strong> {test.timeLimit} phút
-                    </div>
-                  )}
-                  <div className="test-stats">
-                    <span>📝 {test.questions?.length || 0} câu hỏi</span>
-                    {test.allowRetake && <span>🔄 Có thể làm lại</span>}
-                  </div>
-                </div>
-              </div>
-              <div className="test-actions">
-                {!isOverdue(test.deadline) ? (
-                  <button className="do-test-btn">Làm bài ngay</button>
-                ) : (
-                  <button className="overdue-btn" disabled>Đã quá hạn</button>
-                )}
-              </div>
+        {upcomingAssignments.length === 0 ? (
+            <div className="no-tests">
+              <p>🎉 Bạn không có bài tập nào cần nộp!</p>
             </div>
-          ))}
-        </div>
-      )}
+        ) : (
+            <div className="tests-timeline">
+              {upcomingAssignments.map(asm => (
+                  <div key={asm.id} className={`test-item ${getPriorityClass(asm.dueDate)}`}>
+                    <div className="test-info">
+                      <div className="test-header">
+                        {/* Hiển thị tên bài tập */}
+                        <h4>{asm.title}</h4>
+                        <span className="class-badge">{asm.className}</span>
+                      </div>
+                      <div className="test-details">
+                        <div className="deadline-info">
+                          <strong>⏰ Hạn nộp:</strong> {new Date(asm.dueDate).toLocaleString('vi-VN')}
+                        </div>
+                        <div className="time-remaining">
+                          <strong>Còn lại:</strong>
+                          <span className={isOverdue(asm.dueDate) ? 'overdue-text' : 'time-text'}>
+                      {getTimeRemaining(asm.dueDate)}
+                    </span>
+                        </div>
+                        {/* Nếu có giới hạn thời gian làm bài */}
+                        {asm.duration && (
+                            <div className="time-limit">
+                              <strong>⏱️ Thời gian làm:</strong> {asm.duration} phút
+                            </div>
+                        )}
+                        <div className="test-stats">
+                          {/* Hiển thị điểm tối đa */}
+                          <span>Điểm: {asm.maxScore || 10}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="test-actions">
+                      {!isOverdue(asm.dueDate) ? (
+                          <button
+                              className="do-test-btn"
+                              onClick={() => handleDoAssignment(asm)}
+                          >
+                            Làm Bài Ngay
+                          </button>
+                      ) : (
+                          <button className="overdue-btn" disabled>Đã quá hạn</button>
+                      )}
+                    </div>
+                  </div>
+              ))}
+            </div>
+        )}
 
-      {/* Thống kê nhanh */}
-      <div className="quick-stats">
-        <div className="stat-item urgent">
-          <span className="number">{upcomingTests.filter(t => getPriorityClass(t.deadline) === 'urgent').length}</span>
-          <span className="label">Khẩn cấp (24h)</span>
-        </div>
-        <div className="stat-item soon">
-          <span className="number">{upcomingTests.filter(t => getPriorityClass(t.deadline) === 'soon').length}</span>
-          <span className="label">Sắp tới (3 ngày)</span>
-        </div>
-        <div className="stat-item overdue">
-          <span className="number">{upcomingTests.filter(t => getPriorityClass(t.deadline) === 'overdue').length}</span>
-          <span className="label">Quá hạn</span>
+        {/* Thống kê nhanh */}
+        <div className="quick-stats">
+          <div className="stat-item urgent">
+          <span className="number">
+            {upcomingAssignments.filter(t => getPriorityClass(t.dueDate) === 'urgent').length}
+          </span>
+            <span className="label">Gấp (24h)</span>
+          </div>
+          <div className="stat-item soon">
+          <span className="number">
+            {upcomingAssignments.filter(t => getPriorityClass(t.dueDate) === 'soon').length}
+          </span>
+            <span className="label">Sắp tới (3 ngày)</span>
+          </div>
+          <div className="stat-item overdue">
+          <span className="number">
+            {upcomingAssignments.filter(t => getPriorityClass(t.dueDate) === 'overdue').length}
+          </span>
+            <span className="label">Quá hạn</span>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 

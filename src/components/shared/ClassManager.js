@@ -41,10 +41,10 @@ function ClassManager() {
         getDashboardStatsAPI()
       ]);
 
-      if (classesResponse && classesResponse.data) {
+      if (classesResponse && Array.isArray(classesResponse)) {
         // Map dữ liệu từ backend sang format UI
         // Backend trả về: numberOfStudents, numberOfAssignments
-        const mappedClasses = classesResponse.data.map(cls => ({
+        const mappedClasses = classesResponse.map(cls => ({
           ...cls,
           code: cls.classCode || cls.code,
           // FIX: Tạo mảng giả cho cả students và assignments để tránh lỗi undefined length
